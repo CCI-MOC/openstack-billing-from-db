@@ -6,8 +6,8 @@ from openstack_billing_db import model
 def main():
     projects = model.get_projects()
 
-    billing_start = datetime.datetime(year=2023, month=5, day=1)
-    billing_end = datetime.datetime(year=2023, month=6, day=1)
+    billing_start = datetime.datetime(year=2023, month=6, day=1)
+    billing_end = datetime.datetime(year=2023, month=7, day=1)
 
     for project in projects:
         print(f"\n\nProject ID: {project.uuid}")
