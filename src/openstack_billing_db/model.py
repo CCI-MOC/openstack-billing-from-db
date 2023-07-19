@@ -36,13 +36,13 @@ class Flavor(object):
             return int(max(
                 self.vcpus,
                 self.memory / 4096,
-                self.storage / 20
             ))
         else:
-            return int(self.name[:-1])
+            split = self.name.split(".")
+            return int(split[-1])
 
     @property
-    def service_unite_type(self):
+    def service_unit_type(self):
         if "gpu" not in self.name:
             return "CPU"
         else:
@@ -50,7 +50,7 @@ class Flavor(object):
 
     @property
     def cost_per_su(self):
-        if self.service_unite_type == "CPU":
+        if self.service_unit_type == "CPU":
             return 1
         else:
             return 2
@@ -66,6 +66,14 @@ class Flavor(object):
 
 
 Flavor.get_all_flavors()
+
+# Add flavors that don't exist in the database anymore
+Flavor.all_flavors[5] = Flavor(
+    name="Unknown", vcpus=1, memory=2048, storage=10
+)
+Flavor.all_flavors[11] = Flavor(
+    name="Unknown", vcpus=4, memory=8192, storage=10
+)
 
 
 @dataclass()
@@ -131,7 +139,9 @@ class Instance(object):
     def service_units(self):
         return Flavor.all_flavors[self.flavor].service_units
 
-
+    @property
+    def service_unit_type(self):
+        return Flavor.all_flavors[self.flavor].service_unit_type
 
 
 @dataclass()
@@ -142,7 +152,7 @@ class Project(object):
 
 def get_instances(project):
     c = db_nova.cursor()
-    c.execute(f"select uuid, hostname, instance_type_id  from instances"
+    c.execute(f"select uuid, hostname, instance_type_id from instances"
               f" where project_id = \"{project}\"")
     r = c.fetchall()
 
