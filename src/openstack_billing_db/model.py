@@ -48,13 +48,6 @@ class Flavor(object):
         else:
             return "GPU"
 
-    @property
-    def cost_per_su(self):
-        if self.service_unit_type == "CPU":
-            return 1
-        else:
-            return 2
-
     @classmethod
     def get_all_flavors(cls):
         c = db_nova_api.cursor()
@@ -73,6 +66,9 @@ Flavor.all_flavors[5] = Flavor(
 )
 Flavor.all_flavors[11] = Flavor(
     name="Unknown", vcpus=4, memory=8192, storage=10
+)
+Flavor.all_flavors[191] = Flavor(
+    name="gpu-v100.1", vcpus=12, memory=98304, storage=10
 )
 
 
