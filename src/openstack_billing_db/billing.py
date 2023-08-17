@@ -20,7 +20,7 @@ class ProjectInvoice(object):
     gpu_a100_su_hours: int = 0
 
     institution_specific_code: str = "N/A"
-    invoice_interval: str = "2023-06-01 - 2023-07-01"
+    invoice_interval: str = "2023-07-01 - 2023-08-01"
 
 
 ALL_INVOICES = []  # type: list[ProjectInvoice]
@@ -29,8 +29,8 @@ ALL_INVOICES = []  # type: list[ProjectInvoice]
 def collect_invoice_data_from_openstack():
     projects = model.get_projects()
 
-    billing_start = datetime.datetime(year=2023, month=6, day=1)
-    billing_end = datetime.datetime(year=2023, month=7, day=1)
+    billing_start = datetime.datetime(year=2023, month=7, day=1)
+    billing_end = datetime.datetime(year=2023, month=8, day=1)
 
     for project in projects:
 
