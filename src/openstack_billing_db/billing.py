@@ -11,6 +11,7 @@ class ProjectInvoice(object):
     """Represents the invoicing data for a project."""
 
     project_name: str
+    project_id: str
     pi: str
     institution: str
 
@@ -35,7 +36,8 @@ def collect_invoice_data_from_openstack():
     for project in projects:
 
         invoice = ProjectInvoice(
-            project_name=project.uuid,
+            project_name="",
+            project_id=project.uuid,
             pi="",
             institution="",
             instances=project.instances
@@ -71,7 +73,7 @@ def merge_coldfront_data():
 
     for invoice in ALL_INVOICES:
         try:
-            a = by_project_id[invoice.project_name]
+            a = by_project_id[invoice.project_id]
             invoice.project_name = a["attributes"]["Allocated Project Name"]
             invoice.pi = a["project"]["pi"]
         except KeyError:
@@ -88,6 +90,7 @@ def write():
             [
                 "Interval",
                 "Project Name",
+                "Project ID",
                 "PI",
                 "Invoice Email",
                 "Invoice Address",
@@ -109,6 +112,7 @@ def write():
                         [
                             invoice.invoice_interval,
                             invoice.project_name,
+                            invoice.project_id,
                             invoice.pi,
                             "",  # Invoice Email
                             "",  # Invoice Address
