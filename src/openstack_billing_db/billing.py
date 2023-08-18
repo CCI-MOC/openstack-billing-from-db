@@ -24,10 +24,10 @@ class ProjectInvoice(object):
 
 
 def collect_invoice_data_from_openstack(billing_start, billing_end):
-    projects = model.get_projects()
+    database = model.Database()
 
     invoices = []
-    for project in projects:
+    for project in database.projects:
         invoice = ProjectInvoice(
             project_name="",
             project_id=project.uuid,

@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import math
 import datetime
 from dataclasses import dataclass
@@ -159,7 +160,7 @@ def get_instances(project):
     return instances
 
 
-def get_projects():
+def get_projects() -> list[Project]:
     c = db_nova.cursor()
     c.execute("select unique(project_id) from instances")
     r = c.fetchall()
@@ -169,3 +170,19 @@ def get_projects():
         p = Project(uuid=x[0], instances=get_instances(x[0]))
         projects.append(p)
     return projects
+
+
+class BaseDatabase(object):
+    @property
+    @abstractmethod
+    def projects(self) -> list[Project]:
+        """Returns a list of Project, containing instances and events."""
+
+
+class Database(BaseDatabase):
+
+    def __init__(self):
+        self._projects = get_projects()
+
+    def projects(self) -> list[Project]:
+        return self._projects
