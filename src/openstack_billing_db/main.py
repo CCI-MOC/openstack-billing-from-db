@@ -26,10 +26,20 @@ def main():
         help="End of the invoicing period. (YYYY-MM-DD)",
         type=parse_time_argument
     )
+    parser.add_argument(
+        "--coldfront-data-file",
+        default=None,
+        help=("Path to JSON Output of ColdFront's /api/allocations."
+              "Used for populating project names and PIs.")
+    )
 
     args = parser.parse_args()
 
-    billing.generate_billing(args.start, args.end)
+    billing.generate_billing(
+        args.start,
+        args.end,
+        coldfront_data_file=args.coldfront_data_file
+    )
 
 
 if __name__ == "__main__":

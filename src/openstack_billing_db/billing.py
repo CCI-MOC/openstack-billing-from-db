@@ -58,8 +58,8 @@ def collect_invoice_data_from_openstack(billing_start, billing_end):
     return invoices
 
 
-def merge_coldfront_data(invoices):
-    with open('../coldfront_data.json', 'r') as f:
+def merge_coldfront_data(invoices, coldfront_data_file):
+    with open(coldfront_data_file, 'r') as f:
         allocations = json.load(f)
 
     by_project_id = {
@@ -121,7 +121,8 @@ def write(invoices):
                     )
 
 
-def generate_billing(start, end):
+def generate_billing(start, end, coldfront_data_file=None):
     invoices = collect_invoice_data_from_openstack(start, end)
-    merge_coldfront_data(invoices)
+    if coldfront_data_file:
+        merge_coldfront_data(invoices, coldfront_data_file)
     write(invoices)
