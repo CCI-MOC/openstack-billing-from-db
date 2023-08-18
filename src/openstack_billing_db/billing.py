@@ -1,6 +1,5 @@
 import csv
 from dataclasses import dataclass
-import datetime
 import json
 
 from openstack_billing_db import model
@@ -14,6 +13,7 @@ class ProjectInvoice(object):
     project_id: str
     pi: str
     institution: str
+    invoice_interval: str
 
     instances: list[model.Instance]
 
@@ -21,26 +21,22 @@ class ProjectInvoice(object):
     gpu_a100_su_hours: int = 0
 
     institution_specific_code: str = "N/A"
-    invoice_interval: str = "2023-07-01 - 2023-08-01"
 
 
 ALL_INVOICES = []  # type: list[ProjectInvoice]
 
 
-def collect_invoice_data_from_openstack():
+def collect_invoice_data_from_openstack(billing_start, billing_end):
     projects = model.get_projects()
 
-    billing_start = datetime.datetime(year=2023, month=7, day=1)
-    billing_end = datetime.datetime(year=2023, month=8, day=1)
-
     for project in projects:
-
         invoice = ProjectInvoice(
             project_name="",
             project_id=project.uuid,
             pi="",
             institution="",
-            instances=project.instances
+            instances=project.instances,
+            invoice_interval=f"{billing_start.date()} - {billing_end.date()}"
         )
 
         for i in project.instances:  # type: model.Instance
@@ -126,7 +122,7 @@ def write():
                     )
 
 
-if __name__ == "__main__":
-    collect_invoice_data_from_openstack()
+def generate_billing(start, end):
+    collect_invoice_data_from_openstack(start, end)
     merge_coldfront_data()
     write()
