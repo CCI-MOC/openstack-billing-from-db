@@ -21,14 +21,13 @@ db_nova_api = mysql.connector.connect(
 )
 
 
+@dataclass()
 class Flavor(object):
-    all_flavors = dict()
 
-    def __init__(self, name, vcpus, memory, storage):
-        self.name = name
-        self.vcpus = vcpus
-        self.memory = memory
-        self.storage = storage
+    name: str
+    vcpus: int
+    memory: int
+    storage: int
 
     @property
     def service_units(self):
@@ -49,28 +48,32 @@ class Flavor(object):
         else:
             return "GPU"
 
-    @classmethod
-    def get_all_flavors(cls):
-        c = db_nova_api.cursor()
-        c.execute("select id, name, vcpus, memory_mb, root_gb from flavors")
-        r = c.fetchall()
 
-        for x in r:
-            cls.all_flavors[x[0]] = Flavor(*x[1:])
+def get_all_flavors() -> dict[Flavor]:
+    c = db_nova_api.cursor()
+    c.execute("select id, name, vcpus, memory_mb, root_gb from flavors")
+    r = c.fetchall()
+
+    flavors = dict()
+    for x in r:
+        flavors[x[0]] = Flavor(name=x[1],
+                               vcpus=x[2],
+                               memory=x[3],
+                               storage=x[4])
+
+    # Add flavors that don't exist in the database anymore
+    flavors[5] = Flavor(
+        name="Unknown", vcpus=1, memory=2048, storage=10
+    )
+    flavors[11] = Flavor(
+        name="Unknown", vcpus=4, memory=8192, storage=10
+    )
+    flavors[191] = Flavor(
+        name="gpu-v100.1", vcpus=12, memory=98304, storage=10
+    )
 
 
-Flavor.get_all_flavors()
-
-# Add flavors that don't exist in the database anymore
-Flavor.all_flavors[5] = Flavor(
-    name="Unknown", vcpus=1, memory=2048, storage=10
-)
-Flavor.all_flavors[11] = Flavor(
-    name="Unknown", vcpus=4, memory=8192, storage=10
-)
-Flavor.all_flavors[191] = Flavor(
-    name="gpu-v100.1", vcpus=12, memory=98304, storage=10
-)
+FLAVORS = get_all_flavors()
 
 
 @dataclass()
@@ -158,7 +161,7 @@ def get_instances(project):
     for x in r:
         i = Instance(uuid=x[0],
                      name=x[1],
-                     flavor=Flavor.all_flavors[x[2]],
+                     flavor=FLAVORS[x[2]],
                      events=get_events(x[0]))
         instances.append(i)
     return instances
