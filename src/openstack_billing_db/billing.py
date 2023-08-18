@@ -75,8 +75,8 @@ def merge_coldfront_data(invoices, coldfront_data_file):
             continue
 
 
-def write(invoices):
-    with open('invoices.csv', 'w', newline='') as f:
+def write(invoices, output):
+    with open(output, 'w', newline='') as f:
         csv_invoice_writer = csv.writer(
             f, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL
         )
@@ -121,8 +121,8 @@ def write(invoices):
                     )
 
 
-def generate_billing(start, end, coldfront_data_file=None):
+def generate_billing(start, end, output, coldfront_data_file=None):
     invoices = collect_invoice_data_from_openstack(start, end)
     if coldfront_data_file:
         merge_coldfront_data(invoices, coldfront_data_file)
-    write(invoices)
+    write(invoices, output)
