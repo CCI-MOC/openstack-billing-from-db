@@ -80,25 +80,13 @@ class InstanceEvent(object):
     message: str
 
 
+@dataclass
 class Instance(object):
 
-    def __init__(self, uuid, name, flavor):
-        self.uuid = uuid
-        self.name = name
-        self.flavor = flavor
-        self.events = self.get_events()
-
-    def get_events(self):
-        c = db_nova.cursor()
-        c.execute(f"select created_at, action, message from instance_actions where"
-                  f" instance_uuid = \"{self.uuid}\" order by created_at")
-        r = c.fetchall()
-
-        events = []
-        for x in r:
-            i = InstanceEvent(time=x[0], name=x[1], message=x[2])
-            events.append(i)
-        return events
+    uuid: str
+    name: str
+    flavor: str
+    events: list[InstanceEvent]
 
     def get_runtime_during(self, start_time, end_time):
         total_seconds_running = 0
@@ -147,6 +135,19 @@ class Project(object):
     instances: list[Instance]
 
 
+def get_events(instance_uuid):
+    c = db_nova.cursor()
+    c.execute(f"select created_at, action, message from instance_actions where"
+              f" instance_uuid = \"{instance_uuid}\" order by created_at")
+    r = c.fetchall()
+
+    events = []
+    for x in r:
+        i = InstanceEvent(time=x[0], name=x[1], message=x[2])
+        events.append(i)
+    return events
+
+
 def get_instances(project):
     c = db_nova.cursor()
     c.execute(f"select uuid, hostname, instance_type_id from instances"
@@ -155,7 +156,10 @@ def get_instances(project):
 
     instances = []
     for x in r:
-        i = Instance(*x)
+        i = Instance(uuid=x[0],
+                     name=x[1],
+                     flavor=x[2],
+                     events=get_events(x[0]))
         instances.append(i)
     return instances
 
