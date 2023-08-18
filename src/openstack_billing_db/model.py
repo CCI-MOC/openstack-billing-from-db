@@ -85,7 +85,7 @@ class Instance(object):
 
     uuid: str
     name: str
-    flavor: str
+    flavor: Flavor
     events: list[InstanceEvent]
 
     def get_runtime_during(self, start_time, end_time):
@@ -122,11 +122,11 @@ class Instance(object):
 
     @property
     def service_units(self):
-        return Flavor.all_flavors[self.flavor].service_units
+        return self.flavor.service_units
 
     @property
     def service_unit_type(self):
-        return Flavor.all_flavors[self.flavor].service_unit_type
+        return self.flavor.service_unit_type
 
 
 @dataclass()
@@ -158,7 +158,7 @@ def get_instances(project):
     for x in r:
         i = Instance(uuid=x[0],
                      name=x[1],
-                     flavor=x[2],
+                     flavor=Flavor.all_flavors[x[2]],
                      events=get_events(x[0]))
         instances.append(i)
     return instances
