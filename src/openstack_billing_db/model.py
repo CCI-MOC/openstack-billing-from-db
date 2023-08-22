@@ -121,20 +121,23 @@ class Database(BaseDatabase):
         self.flavors = self.get_flavors()
         self._projects = self.get_projects()
 
+    @property
     def projects(self) -> list[Project]:
         return self._projects
 
     def get_flavors(self) -> dict[Flavor]:
-        c = self.db_nova_api.cursor()
-        c.execute("select id, name, vcpus, memory_mb, root_gb from flavors")
-        r = c.fetchall()
+        cursor = self.db_nova_api.cursor(dictionary=True)
+        cursor.execute(
+            "select id, name, vcpus, memory_mb, root_gb from flavors"
+        )
+        result = cursor.fetchall()
 
         flavors = dict()
-        for x in r:
-            flavors[x[0]] = Flavor(name=x[1],
-                                   vcpus=x[2],
-                                   memory=x[3],
-                                   storage=x[4])
+        for flavor in result:
+            flavors[flavor["id"]] = Flavor(name=flavor["name"],
+                                           vcpus=flavor["vcpus"],
+                                           memory=flavor["memory_mb"],
+                                           storage=flavor["root_gb"])
 
         # Add flavors that don't exist in the database anymore
         flavors[5] = Flavor(
@@ -148,40 +151,39 @@ class Database(BaseDatabase):
         )
         return flavors
 
-    def get_events(self, instance_uuid):
-        c = self.db_nova.cursor()
-        c.execute(f"select created_at, action, message from instance_actions where"
-                  f" instance_uuid = \"{instance_uuid}\" order by created_at")
-        r = c.fetchall()
+    def get_events(self, instance_uuid) -> list[InstanceEvent]:
+        cursor = self.db_nova.cursor(dictionary=True)
+        cursor.execute(
+            f"select created_at, action, message from instance_actions where"
+            f" instance_uuid = \"{instance_uuid}\" order by created_at"
+        )
+        return [
+            InstanceEvent(
+                time=event["created_at"],
+                name=event["action"],
+                message=event["message"]
+            ) for event in cursor.fetchall()
+        ]
 
-        events = []
-        for x in r:
-            i = InstanceEvent(time=x[0], name=x[1], message=x[2])
-            events.append(i)
-        return events
-
-    def get_instances(self, project):
-        c = self.db_nova.cursor()
-        c.execute(f"select uuid, hostname, instance_type_id from instances"
-                  f" where project_id = \"{project}\"")
-        r = c.fetchall()
-
-        instances = []
-        for x in r:
-            i = Instance(uuid=x[0],
-                         name=x[1],
-                         flavor=self.flavors[x[2]],
-                         events=self.get_events(x[0]))
-            instances.append(i)
-        return instances
+    def get_instances(self, project) -> list[Instance]:
+        cursor = self.db_nova.cursor(dictionary=True)
+        cursor.execute(f"select uuid, hostname, instance_type_id from instances"
+                       f" where project_id = \"{project}\"")
+        return [
+            Instance(
+                uuid=instance["uuid"],
+                name=instance["hostname"],
+                flavor=self.flavors[instance["instance_type_id"]],
+                events=self.get_events(instance["uuid"])
+            ) for instance in cursor.fetchall()
+        ]
 
     def get_projects(self) -> list[Project]:
-        c = self.db_nova.cursor()
-        c.execute("select unique(project_id) from instances")
-        r = c.fetchall()
-
-        projects = []
-        for x in r:
-            p = Project(uuid=x[0], instances=self.get_instances(x[0]))
-            projects.append(p)
-        return projects
+        cursor = self.db_nova.cursor()
+        cursor.execute("select unique(project_id) from instances")
+        return [
+            Project(
+                uuid=project[0],
+                instances=self.get_instances(project[0])
+            ) for project in cursor.fetchall()
+        ]
