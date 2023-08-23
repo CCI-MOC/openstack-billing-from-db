@@ -23,13 +23,11 @@ class ProjectInvoice(object):
     institution_specific_code: str = "N/A"
 
 
-ALL_INVOICES = []  # type: list[ProjectInvoice]
-
-
 def collect_invoice_data_from_openstack(billing_start, billing_end):
-    projects = model.get_projects()
+    database = model.Database()
 
-    for project in projects:
+    invoices = []
+    for project in database.projects:
         invoice = ProjectInvoice(
             project_name="",
             project_id=project.uuid,
@@ -56,18 +54,19 @@ def collect_invoice_data_from_openstack(billing_start, billing_end):
                 except Exception:
                     raise Exception("Invalid flavor.")
 
-        ALL_INVOICES.append(invoice)
+        invoices.append(invoice)
+    return invoices
 
 
-def merge_coldfront_data():
-    with open('../coldfront_data.json', 'r') as f:
+def merge_coldfront_data(invoices, coldfront_data_file):
+    with open(coldfront_data_file, 'r') as f:
         allocations = json.load(f)
 
     by_project_id = {
         a["attributes"].get("Allocated Project ID"): a for a in allocations
     }
 
-    for invoice in ALL_INVOICES:
+    for invoice in invoices:
         try:
             a = by_project_id[invoice.project_id]
             invoice.project_name = a["attributes"]["Allocated Project Name"]
@@ -76,8 +75,8 @@ def merge_coldfront_data():
             continue
 
 
-def write():
-    with open('invoices.csv', 'w', newline='') as f:
+def write(invoices, output):
+    with open(output, 'w', newline='') as f:
         csv_invoice_writer = csv.writer(
             f, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL
         )
@@ -99,7 +98,7 @@ def write():
             ]
         )
 
-        for invoice in ALL_INVOICES:
+        for invoice in invoices:
             for invoice_type in ['cpu', 'gpu_a100']:
                 # Each project gets two rows, one for CPU and one for GPU
                 hours = invoice.__getattribute__(f"{invoice_type}_su_hours")
@@ -122,7 +121,8 @@ def write():
                     )
 
 
-def generate_billing(start, end):
-    collect_invoice_data_from_openstack(start, end)
-    merge_coldfront_data()
-    write()
+def generate_billing(start, end, output, coldfront_data_file=None):
+    invoices = collect_invoice_data_from_openstack(start, end)
+    if coldfront_data_file:
+        merge_coldfront_data(invoices, coldfront_data_file)
+    write(invoices, output)
