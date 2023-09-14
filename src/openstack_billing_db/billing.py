@@ -19,6 +19,7 @@ class ProjectInvoice(object):
 
     cpu_su_hours: int = 0
     gpu_a100_su_hours: int = 0
+    gpu_v100_su_hours: int = 0
 
     institution_specific_code: str = "N/A"
 
@@ -46,9 +47,10 @@ def collect_invoice_data_from_openstack(database, billing_start, billing_end):
 
                     if i.service_unit_type == "CPU":
                         invoice.cpu_su_hours += cost
-                    elif i.service_unit_type == "GPU":
-                        # There's only a A100 flavor at the moment.
+                    elif i.service_unit_type == "GPU A100":
                         invoice.gpu_a100_su_hours += cost
+                    elif i.service_unit_type == "GPU V100":
+                        invoice.gpu_v100_su_hours += cost
                 except Exception:
                     raise Exception("Invalid flavor.")
 
@@ -113,7 +115,7 @@ def write(invoices, output):
         )
 
         for invoice in invoices:
-            for invoice_type in ['cpu', 'gpu_a100']:
+            for invoice_type in ['cpu', 'gpu_a100', 'gpu_v100']:
                 # Each project gets two rows, one for CPU and one for GPU
                 hours = invoice.__getattribute__(f"{invoice_type}_su_hours")
                 if hours > 0:
@@ -128,7 +130,7 @@ def write(invoices, output):
                             invoice.institution,
                             invoice.institution_specific_code,
                             hours,
-                            f"{invoice_type.replace('_', '').upper()}",
+                            f"{invoice_type.replace('_', ' ').upper()}",
                             "",  # Rate
                             "",  # Cost
                         ]

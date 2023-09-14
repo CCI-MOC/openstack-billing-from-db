@@ -25,6 +25,11 @@ class Flavor(object):
                 self.memory / 4096,
             ))
         else:
+            # The flavor for 2 SUs of V100 is inconsistent with previous
+            # naming scheme.
+            if self.name == "gpu-su-v100.1m":
+                return 2
+
             split = self.name.split(".")
             return int(split[-1])
 
@@ -32,8 +37,13 @@ class Flavor(object):
     def service_unit_type(self):
         if "gpu" not in self.name:
             return "CPU"
+        elif "a100" in self.name:
+            return "GPU A100"
+        elif "v100" in self.name:
+            return "GPU V100"
         else:
-            return "GPU"
+            # New GPU type that we need to take into account.
+            raise Exception()
 
 
 @dataclass()
