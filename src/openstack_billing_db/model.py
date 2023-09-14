@@ -2,12 +2,15 @@ from abc import ABC, abstractmethod
 import math
 import datetime
 from dataclasses import dataclass
+from dataclasses_json import dataclass_json
 
 import mysql.connector
 
 
+@dataclass_json()
 @dataclass()
 class Flavor(object):
+    id: int
     name: str
     vcpus: int
     memory: int
@@ -103,7 +106,7 @@ class BaseDatabase(object):
 
 class Database(BaseDatabase):
 
-    def __init__(self):
+    def __init__(self, initial_flavors=None):
         self.db_nova = mysql.connector.connect(
             host="127.0.0.1",
             database="nova",
@@ -118,11 +121,18 @@ class Database(BaseDatabase):
             password="root",
         )
 
-        self.flavors = self.get_flavors()
-        self._projects = self.get_projects()
+        self.flavors = dict()
+        if initial_flavors:
+            self.flavors.update({f.id: f for f in list(initial_flavors)})
+        self.flavors.update(self.get_flavors())
+
+        self._projects = None
 
     @property
     def projects(self) -> list[Project]:
+        if not self._projects:
+            self._projects = self.get_projects()
+
         return self._projects
 
     def get_flavors(self) -> dict[Flavor]:
@@ -134,21 +144,11 @@ class Database(BaseDatabase):
 
         flavors = dict()
         for flavor in result:
-            flavors[flavor["id"]] = Flavor(name=flavor["name"],
+            flavors[flavor["id"]] = Flavor(id=flavor["id"],
+                                           name=flavor["name"],
                                            vcpus=flavor["vcpus"],
                                            memory=flavor["memory_mb"],
                                            storage=flavor["root_gb"])
-
-        # Add flavors that don't exist in the database anymore
-        flavors[5] = Flavor(
-            name="Unknown", vcpus=1, memory=2048, storage=10
-        )
-        flavors[11] = Flavor(
-            name="Unknown", vcpus=4, memory=8192, storage=10
-        )
-        flavors[191] = Flavor(
-            name="gpu-v100.1", vcpus=12, memory=98304, storage=10
-        )
         return flavors
 
     def get_events(self, instance_uuid) -> list[InstanceEvent]:

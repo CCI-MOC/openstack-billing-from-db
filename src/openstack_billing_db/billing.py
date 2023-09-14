@@ -23,9 +23,7 @@ class ProjectInvoice(object):
     institution_specific_code: str = "N/A"
 
 
-def collect_invoice_data_from_openstack(billing_start, billing_end):
-    database = model.Database()
-
+def collect_invoice_data_from_openstack(database, billing_start, billing_end):
     invoices = []
     for project in database.projects:
         invoice = ProjectInvoice(
@@ -56,6 +54,22 @@ def collect_invoice_data_from_openstack(billing_start, billing_end):
 
         invoices.append(invoice)
     return invoices
+
+
+def load_flavors_cache(flavors_cache_file) -> dict[int: model.Flavor]:
+    with open(flavors_cache_file, 'r') as f:
+        cache = json.load(f)
+
+    flavors = []
+    for flavor in cache:
+        flavors.append((model.Flavor(**flavor)))
+
+    return flavors
+
+
+def write_flavors_cache(flavors_cache_file, flavors):
+    with open(flavors_cache_file, 'w') as f:
+        f.write(json.dumps(flavors, indent=4))
 
 
 def merge_coldfront_data(invoices, coldfront_data_file):
@@ -121,8 +135,23 @@ def write(invoices, output):
                     )
 
 
-def generate_billing(start, end, output, coldfront_data_file=None):
-    invoices = collect_invoice_data_from_openstack(start, end)
+def generate_billing(start, end, output, coldfront_data_file=None,
+                     flavors_cache_file=None):
+    # Flavors are occasionally deleted leaving no reference in the
+    # database.
+    flavors_cache = None
+    if flavors_cache_file:
+        flavors_cache = load_flavors_cache(flavors_cache_file)
+
+    database = model.Database(initial_flavors=flavors_cache)
+
+    if flavors_cache_file:
+        write_flavors_cache(
+            flavors_cache_file,
+            [f.to_dict() for f in database.flavors.values()]
+        )
+
+    invoices = collect_invoice_data_from_openstack(database, start, end)
     if coldfront_data_file:
         merge_coldfront_data(invoices, coldfront_data_file)
     write(invoices, output)

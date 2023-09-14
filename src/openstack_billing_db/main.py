@@ -33,6 +33,11 @@ def main():
               "Used for populating project names and PIs.")
     )
     parser.add_argument(
+        "--flavors-cache-file",
+        default=None,
+        help="Path to file to cache previously encountered flavors."
+    )
+    parser.add_argument(
         "output",
         help="Output path for invoice in CSV format."
     )
@@ -43,7 +48,8 @@ def main():
         args.start,
         args.end,
         args.output,
-        coldfront_data_file=args.coldfront_data_file
+        coldfront_data_file=args.coldfront_data_file,
+        flavors_cache_file=args.flavors_cache_file,
     )
 
 
