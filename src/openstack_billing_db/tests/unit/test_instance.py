@@ -4,7 +4,8 @@ from datetime import datetime, timedelta
 from openstack_billing_db.model import Instance, InstanceEvent, Flavor
 
 FLAVORS = {
-    1: Flavor(name="TestFlavor",
+    1: Flavor(id=1,
+              name="TestFlavor",
               vcpus=1,
               memory=4096,
               storage=10)
