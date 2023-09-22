@@ -1,8 +1,16 @@
 import csv
 from dataclasses import dataclass
+from decimal import Decimal
 import json
 
 from openstack_billing_db import model
+
+
+@dataclass()
+class Rates(object):
+    cpu: Decimal
+    gpu_a100: Decimal
+    gpu_v100: Decimal
 
 
 @dataclass()
@@ -17,14 +25,40 @@ class ProjectInvoice(object):
 
     instances: list[model.Instance]
 
+    rates: Rates
+
     cpu_su_hours: int = 0
     gpu_a100_su_hours: int = 0
     gpu_v100_su_hours: int = 0
 
     institution_specific_code: str = "N/A"
 
+    @property
+    def cpu_su_rate(self):
+        return self.rates.cpu
 
-def collect_invoice_data_from_openstack(database, billing_start, billing_end):
+    @property
+    def cpu_su_cost(self):
+        return self.rates.cpu * self.cpu_su_hours
+
+    @property
+    def gpu_a100_su_rate(self):
+        return self.rates.gpu_a100
+
+    @property
+    def gpu_a100_su_cost(self):
+        return self.rates.gpu_a100 * self.gpu_a100_su_hours
+
+    @property
+    def gpu_v100_su_rate(self):
+        return self.rates.gpu_v100
+
+    @property
+    def gpu_v100_su_cost(self):
+        return self.rates.gpu_v100 * self.gpu_v100_su_hours
+
+
+def collect_invoice_data_from_openstack(database, billing_start, billing_end, rates):
     invoices = []
     for project in database.projects:
         invoice = ProjectInvoice(
@@ -33,7 +67,8 @@ def collect_invoice_data_from_openstack(database, billing_start, billing_end):
             pi="",
             institution="",
             instances=project.instances,
-            invoice_interval=f"{billing_start.date()} - {billing_end.date()}"
+            invoice_interval=f"{billing_start.date()} - {billing_end.date()}",
+            rates=rates
         )
 
         for i in project.instances:  # type: model.Instance
@@ -43,14 +78,14 @@ def collect_invoice_data_from_openstack(database, billing_start, billing_end):
             if runtime > 0:
                 try:
                     su = i.service_units
-                    cost = runtime * su
+                    su_hours = runtime * su
 
                     if i.service_unit_type == "CPU":
-                        invoice.cpu_su_hours += cost
+                        invoice.cpu_su_hours += su_hours
                     elif i.service_unit_type == "GPU A100":
-                        invoice.gpu_a100_su_hours += cost
+                        invoice.gpu_a100_su_hours += su_hours
                     elif i.service_unit_type == "GPU V100":
-                        invoice.gpu_v100_su_hours += cost
+                        invoice.gpu_v100_su_hours += su_hours
                 except Exception:
                     raise Exception("Invalid flavor.")
 
@@ -118,6 +153,8 @@ def write(invoices, output):
             for invoice_type in ['cpu', 'gpu_a100', 'gpu_v100']:
                 # Each project gets two rows, one for CPU and one for GPU
                 hours = invoice.__getattribute__(f"{invoice_type}_su_hours")
+                rate = invoice.__getattribute__(f"{invoice_type}_su_rate")
+                cost = invoice.__getattribute__(f"{invoice_type}_su_cost")
                 if hours > 0:
                     csv_invoice_writer.writerow(
                         [
@@ -131,14 +168,14 @@ def write(invoices, output):
                             invoice.institution_specific_code,
                             hours,
                             f"{invoice_type.replace('_', ' ').upper()}",
-                            "",  # Rate
-                            "",  # Cost
+                            rate,  # Rate
+                            cost,  # Cost
                         ]
                     )
 
 
-def generate_billing(start, end, output, coldfront_data_file=None,
-                     flavors_cache_file=None):
+def generate_billing(start, end, output, rates,
+                     coldfront_data_file=None, flavors_cache_file=None):
     # Flavors are occasionally deleted leaving no reference in the
     # database.
     flavors_cache = None
@@ -153,7 +190,7 @@ def generate_billing(start, end, output, coldfront_data_file=None,
             [f.to_dict() for f in database.flavors.values()]
         )
 
-    invoices = collect_invoice_data_from_openstack(database, start, end)
+    invoices = collect_invoice_data_from_openstack(database, start, end, rates)
     if coldfront_data_file:
         merge_coldfront_data(invoices, coldfront_data_file)
     write(invoices, output)
