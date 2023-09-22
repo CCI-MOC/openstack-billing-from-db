@@ -100,15 +100,15 @@ def write(invoices, output):
         csv_invoice_writer.writerow(
             [
                 "Interval",
-                "Project Name",
-                "Project ID",
-                "PI",
+                "Project - Allocation",
+                "Project - Allocation ID",
+                "Manager (PI)",
                 "Invoice Email",
                 "Invoice Address",
                 "Institution",
-                "Institution Specific Code",
-                "Invoice Type Hours",
-                "Invoice Type",
+                "Institution - Specific Code",
+                "SU Hours (GBhr or SUhr)",
+                "SU Type",
                 "Rate",
                 "Cost",
             ]
