@@ -1,3 +1,4 @@
+from decimal import Decimal
 from datetime import datetime
 import argparse
 
@@ -38,18 +39,43 @@ def main():
         help="Path to file to cache previously encountered flavors."
     )
     parser.add_argument(
+        "--rate-cpu-su",
+        default=0,
+        type=Decimal,
+        help="Rate of CPU SU/hr"
+    )
+    parser.add_argument(
+        "--rate-gpu-a100-su",
+        default=0,
+        type=Decimal,
+        help="Rate of GPU A100 SU/hr"
+    )
+    parser.add_argument(
+        "--rate-gpu-v100-su",
+        default=0,
+        type=Decimal,
+        help="Rate of GPU V100 SU/hr"
+    )
+    parser.add_argument(
         "output",
         help="Output path for invoice in CSV format."
     )
 
     args = parser.parse_args()
 
+    rates = billing.Rates(
+        cpu=args.rate_cpu_su,
+        gpu_a100=args.rate_gpu_a100_su,
+        gpu_v100=args.rate_gpu_v100_su,
+    )
+
     billing.generate_billing(
         args.start,
         args.end,
         args.output,
+        rates,
         coldfront_data_file=args.coldfront_data_file,
-        flavors_cache_file=args.flavors_cache_file,
+        flavors_cache_file=args.flavors_cache_file
     )
 
 
