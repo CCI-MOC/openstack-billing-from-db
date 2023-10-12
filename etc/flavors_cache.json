@@ -334,5 +334,12 @@
         "vcpus": 2,
         "memory": 4096,
         "storage": 10
+    },
+    {
+        "id": 320,
+        "name": "gpu-k80.1",
+        "vcpus": 8,
+        "memory": 64512,
+        "storage": 20
     }
 ]

@@ -11,6 +11,8 @@ class Rates(object):
     cpu: Decimal
     gpu_a100: Decimal
     gpu_v100: Decimal
+    gpu_a2: Decimal
+    gpu_k80: Decimal
 
 
 @dataclass()
@@ -30,6 +32,8 @@ class ProjectInvoice(object):
     cpu_su_hours: int = 0
     gpu_a100_su_hours: int = 0
     gpu_v100_su_hours: int = 0
+    gpu_k80_su_hours: int = 0
+    gpu_a2_su_hours: int = 0
 
     institution_specific_code: str = "N/A"
 
@@ -56,6 +60,22 @@ class ProjectInvoice(object):
     @property
     def gpu_v100_su_cost(self):
         return self.rates.gpu_v100 * self.gpu_v100_su_hours
+
+    @property
+    def gpu_k80_su_rate(self):
+        return self.rates.gpu_k80
+
+    @property
+    def gpu_k80_su_cost(self):
+        return self.rates.gpu_k80 * self.gpu_k80_su_hours
+
+    @property
+    def gpu_a2_su_rate(self):
+        return self.rates.gpu_a2
+
+    @property
+    def gpu_a2_su_cost(self):
+        return self.rates.gpu_a2 * self.gpu_a2_su_hours
 
 
 def collect_invoice_data_from_openstack(database, billing_start, billing_end, rates):
@@ -150,7 +170,7 @@ def write(invoices, output):
         )
 
         for invoice in invoices:
-            for invoice_type in ['cpu', 'gpu_a100', 'gpu_v100']:
+            for invoice_type in ['cpu', 'gpu_a100', 'gpu_v100', 'gpu_k80', 'gpu_a2']:
                 # Each project gets two rows, one for CPU and one for GPU
                 hours = invoice.__getattribute__(f"{invoice_type}_su_hours")
                 rate = invoice.__getattribute__(f"{invoice_type}_su_rate")

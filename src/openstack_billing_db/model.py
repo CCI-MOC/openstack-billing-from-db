@@ -41,6 +41,10 @@ class Flavor(object):
             return "GPU A100"
         elif "v100" in self.name:
             return "GPU V100"
+        elif "k80" in self.name:
+            return "GPU K80"
+        elif "gpu-su-a2" in self.name:
+            return "GPU A2"
         else:
             # New GPU type that we need to take into account.
             raise Exception()

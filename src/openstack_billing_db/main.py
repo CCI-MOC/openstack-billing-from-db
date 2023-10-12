@@ -57,6 +57,18 @@ def main():
         help="Rate of GPU V100 SU/hr"
     )
     parser.add_argument(
+        "--rate-gpu-k80-su",
+        default=0,
+        type=Decimal,
+        help="Rate of GPU K80 SU/hr"
+    )
+    parser.add_argument(
+        "--rate-gpu-a2-su",
+        default=0,
+        type=Decimal,
+        help="Rate of GPU A2 SU/hr"
+    )
+    parser.add_argument(
         "output",
         help="Output path for invoice in CSV format."
     )
@@ -67,6 +79,8 @@ def main():
         cpu=args.rate_cpu_su,
         gpu_a100=args.rate_gpu_a100_su,
         gpu_v100=args.rate_gpu_v100_su,
+        gpu_k80=args.rate_gpu_k80_su,
+        gpu_a2=args.rate_gpu_a2_su,
     )
 
     billing.generate_billing(
