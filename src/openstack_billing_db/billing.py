@@ -14,6 +14,12 @@ class Rates(object):
     gpu_a2: Decimal
     gpu_k80: Decimal
 
+    cpu_su_name: str = "OpenStack CPU"
+    gpu_a100_su_name: str = "OpenStack GPUA100"
+    gpu_v100_su_name: str = "OpenStack GPUV100"
+    gpu_a2_su_name: str = "OpenStack GPUA2"
+    gpu_k80_su_name: str = "OpenStack GPUK80"
+
 
 @dataclass()
 class ProjectInvoice(object):
@@ -42,12 +48,20 @@ class ProjectInvoice(object):
         return self.rates.cpu
 
     @property
+    def cpu_su_name(self):
+        return self.rates.cpu_su_name
+
+    @property
     def cpu_su_cost(self):
         return self.rates.cpu * self.cpu_su_hours
 
     @property
     def gpu_a100_su_rate(self):
         return self.rates.gpu_a100
+
+    @property
+    def cpu_a100_su_name(self):
+        return self.rates.gpu_a100_su_name
 
     @property
     def gpu_a100_su_cost(self):
@@ -58,6 +72,10 @@ class ProjectInvoice(object):
         return self.rates.gpu_v100
 
     @property
+    def cpu_v100_su_name(self):
+        return self.rates.gpu_v100_su_name
+
+    @property
     def gpu_v100_su_cost(self):
         return self.rates.gpu_v100 * self.gpu_v100_su_hours
 
@@ -66,12 +84,20 @@ class ProjectInvoice(object):
         return self.rates.gpu_k80
 
     @property
+    def cpu_k80_su_name(self):
+        return self.rates.gpu_k80_su_name
+
+    @property
     def gpu_k80_su_cost(self):
         return self.rates.gpu_k80 * self.gpu_k80_su_hours
 
     @property
     def gpu_a2_su_rate(self):
         return self.rates.gpu_a2
+
+    @property
+    def cpu_a2_su_name(self):
+        return self.rates.gpu_a2_su_name
 
     @property
     def gpu_a2_su_cost(self):
@@ -174,6 +200,7 @@ def write(invoices, output):
                 # Each project gets two rows, one for CPU and one for GPU
                 hours = invoice.__getattribute__(f"{invoice_type}_su_hours")
                 rate = invoice.__getattribute__(f"{invoice_type}_su_rate")
+                su_name = invoice.__getattribute__(f"{invoice_type}_su_name")
                 cost = invoice.__getattribute__(f"{invoice_type}_su_cost")
                 if hours > 0:
                     csv_invoice_writer.writerow(
@@ -187,7 +214,7 @@ def write(invoices, output):
                             invoice.institution,
                             invoice.institution_specific_code,
                             hours,
-                            f"{invoice_type.replace('_', ' ').upper()}",
+                            su_name,
                             rate,  # Rate
                             cost,  # Cost
                         ]
