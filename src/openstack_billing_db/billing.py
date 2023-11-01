@@ -14,6 +14,12 @@ class Rates(object):
     gpu_a2: Decimal
     gpu_k80: Decimal
 
+    cpu_su_name: str = "OpenStack CPU"
+    gpu_a100_su_name: str = "OpenStack GPUA100"
+    gpu_v100_su_name: str = "OpenStack GPUV100"
+    gpu_a2_su_name: str = "OpenStack GPUA2"
+    gpu_k80_su_name: str = "OpenStack GPUK80"
+
 
 @dataclass()
 class ProjectInvoice(object):
@@ -38,40 +44,20 @@ class ProjectInvoice(object):
     institution_specific_code: str = "N/A"
 
     @property
-    def cpu_su_rate(self):
-        return self.rates.cpu
-
-    @property
     def cpu_su_cost(self):
         return self.rates.cpu * self.cpu_su_hours
-
-    @property
-    def gpu_a100_su_rate(self):
-        return self.rates.gpu_a100
 
     @property
     def gpu_a100_su_cost(self):
         return self.rates.gpu_a100 * self.gpu_a100_su_hours
 
     @property
-    def gpu_v100_su_rate(self):
-        return self.rates.gpu_v100
-
-    @property
     def gpu_v100_su_cost(self):
         return self.rates.gpu_v100 * self.gpu_v100_su_hours
 
     @property
-    def gpu_k80_su_rate(self):
-        return self.rates.gpu_k80
-
-    @property
     def gpu_k80_su_cost(self):
         return self.rates.gpu_k80 * self.gpu_k80_su_hours
-
-    @property
-    def gpu_a2_su_rate(self):
-        return self.rates.gpu_a2
 
     @property
     def gpu_a2_su_cost(self):
@@ -173,7 +159,8 @@ def write(invoices, output):
             for invoice_type in ['cpu', 'gpu_a100', 'gpu_v100', 'gpu_k80', 'gpu_a2']:
                 # Each project gets two rows, one for CPU and one for GPU
                 hours = invoice.__getattribute__(f"{invoice_type}_su_hours")
-                rate = invoice.__getattribute__(f"{invoice_type}_su_rate")
+                rate = invoice.rates.__getattribute__(invoice_type)
+                su_name = invoice.rates.__getattribute__(f"{invoice_type}_su_name")
                 cost = invoice.__getattribute__(f"{invoice_type}_su_cost")
                 if hours > 0:
                     csv_invoice_writer.writerow(
@@ -187,7 +174,7 @@ def write(invoices, output):
                             invoice.institution,
                             invoice.institution_specific_code,
                             hours,
-                            f"{invoice_type.replace('_', ' ').upper()}",
+                            su_name,
                             rate,  # Rate
                             cost,  # Cost
                         ]
