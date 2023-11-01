@@ -341,5 +341,82 @@
         "vcpus": 8,
         "memory": 64512,
         "storage": 20
+    },
+    {
+        "id": 323,
+        "name": "gpu-su-k80.1",
+        "vcpus": 6,
+        "memory": 31744,
+        "storage": 20
+    },
+    {
+        "id": 326,
+        "name": "gpu-su-k80.2",
+        "vcpus": 12,
+        "memory": 63488,
+        "storage": 20
+    },
+    {
+        "id": 329,
+        "name": "gpu-su-k80.4",
+        "vcpus": 24,
+        "memory": 126976,
+        "storage": 20
+    },
+    {
+        "id": 332,
+        "name": "gpu-su-v100.1",
+        "vcpus": 48,
+        "memory": 196608,
+        "storage": 20
+    },
+    {
+        "id": 335,
+        "name": "gpu-su-v100.1m",
+        "vcpus": 48,
+        "memory": 196608,
+        "storage": 20
+    },
+    {
+        "id": 368,
+        "name": "test-gpu-su-k80.4",
+        "vcpus": 24,
+        "memory": 122880,
+        "storage": 20
+    },
+    {
+        "id": 396,
+        "name": "test-gpu-su-a100.2",
+        "vcpus": 48,
+        "memory": 131072,
+        "storage": 20
+    },
+    {
+        "id": 426,
+        "name": "test2-gpu-su-k80.4",
+        "vcpus": 24,
+        "memory": 118784,
+        "storage": 20
+    },
+    {
+        "id": 356,
+        "name": "Unknown test-gpu-su-k80.4",
+        "vcpus": 24,
+        "memory": 118784,
+        "storage": 20
+    },
+    {
+        "id": 365,
+        "name": "Unknown gpu-su-k80.4",
+        "vcpus": 24,
+        "memory": 123904,
+        "storage": 20
+    },
+    {
+        "id": 411,
+        "name": "Unknown gpu-su-k80.4",
+        "vcpus": 24,
+        "memory": 112640,
+        "storage": 20
     }
 ]
