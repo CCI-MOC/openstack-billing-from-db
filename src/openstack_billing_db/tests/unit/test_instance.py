@@ -11,6 +11,11 @@ FLAVORS = {
               storage=10)
 }
 
+MINUTE = 60
+HOUR = 60 * MINUTE
+DAY = HOUR * 24
+MONTH = 31 * DAY
+
 
 def test_instance_simple_runtime():
     time = datetime(year=2000, month=1, day=2, hour=0, minute=0, second=0)
@@ -27,7 +32,8 @@ def test_instance_simple_runtime():
         datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0),
         datetime(year=2000, month=2, day=2, hour=0, minute=0, second=0)
     )
-    assert r == 1
+    assert r.total_seconds_running == 30 * MINUTE
+    assert r.total_seconds_stopped == 0
 
 
 def test_instance_runtime_started_before():
@@ -45,7 +51,8 @@ def test_instance_runtime_started_before():
         datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0),
         datetime(year=2000, month=2, day=2, hour=0, minute=0, second=0)
     )
-    assert r == 0
+    assert r.total_seconds_running == 0
+    assert r.total_seconds_stopped == 0
 
 
 def test_instance_runtime_started_before_still_running():
@@ -62,7 +69,8 @@ def test_instance_runtime_started_before_still_running():
         datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0),
         datetime(year=2000, month=2, day=1, hour=0, minute=0, second=0)
     )
-    assert r == (31 * 24 * 1)
+    assert r.total_seconds_running == MONTH
+    assert r.total_seconds_stopped == 0
 
 
 def test_instance_runtime_stopped_and_started():
@@ -82,7 +90,8 @@ def test_instance_runtime_stopped_and_started():
         datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0),
         datetime(year=2000, month=2, day=1, hour=0, minute=0, second=0)
     )
-    assert r == 2
+    assert r.total_seconds_running == (40 * MINUTE) + (40 * MINUTE)
+    assert r.total_seconds_stopped == DAY - (40 * MINUTE)
 
 
 def test_instance_no_delete_action():
@@ -97,21 +106,27 @@ def test_instance_no_delete_action():
                  deleted_at=time + timedelta(days=1, minutes=40))
 
     # In current billing cycle
-    assert i.get_runtime_during(
+    r = i.get_runtime_during(
         datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0),
         datetime(year=2000, month=2, day=1, hour=0, minute=0, second=0)
-    ) == 25
+    )
+    assert r.total_seconds_running == DAY + (40 * MINUTE)
+    assert r.total_seconds_stopped == 0
 
     # Outside billing cycles
-    assert i.get_runtime_during(
+    r = i.get_runtime_during(
         datetime(year=2000, month=2, day=1, hour=0, minute=0, second=0),
         datetime(year=2000, month=3, day=1, hour=0, minute=0, second=0)
-    ) == 0
+    )
+    assert r.total_seconds_running == 0
+    assert r.total_seconds_stopped == 0
 
-    assert i.get_runtime_during(
+    r = i.get_runtime_during(
         datetime(year=1999, month=11, day=1, hour=0, minute=0, second=0),
         datetime(year=2000, month=12, day=1, hour=0, minute=0, second=0)
-    ) == 0
+    )
+    assert r.total_seconds_running == 0
+    assert r.total_seconds_stopped == 0
 
 
 def test_instance_no_delete_action_stopped():
@@ -126,10 +141,12 @@ def test_instance_no_delete_action_stopped():
                  events=events,
                  deleted_at=time + timedelta(days=1, minutes=40))
 
-    assert i.get_runtime_during(
+    r = i.get_runtime_during(
         datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0),
         datetime(year=2000, month=2, day=1, hour=0, minute=0, second=0)
-    ) == 1
+    )
+    assert r.total_seconds_running == 40 * MINUTE
+    assert r.total_seconds_stopped == DAY
 
 
 def test_instance_no_delete_action_stopped_restarted():
@@ -145,8 +162,10 @@ def test_instance_no_delete_action_stopped_restarted():
                  events=events,
                  deleted_at=time + timedelta(days=1, minutes=40))
 
-    assert i.get_runtime_during(
+    r = i.get_runtime_during(
         datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0),
         datetime(year=2000, month=2, day=1, hour=0, minute=0, second=0)
-    ) == 2
+    )
+    assert r.total_seconds_running == (40 * MINUTE) + (40 * MINUTE)
+    assert r.total_seconds_stopped == DAY - (40 * MINUTE)
 

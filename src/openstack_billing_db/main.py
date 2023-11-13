@@ -69,6 +69,12 @@ def main():
         help="Rate of GPU A2 SU/hr"
     )
     parser.add_argument(
+        "--include-stopped-runtime",
+        default=False,
+        type=bool,
+        help="Include stopped runtime for instances."
+    )
+    parser.add_argument(
         "output",
         help="Output path for invoice in CSV format."
     )
@@ -81,6 +87,7 @@ def main():
         gpu_v100=args.rate_gpu_v100_su,
         gpu_k80=args.rate_gpu_k80_su,
         gpu_a2=args.rate_gpu_a2_su,
+        include_stopped_runtime=args.include_stopped_runtime,
     )
 
     billing.generate_billing(
