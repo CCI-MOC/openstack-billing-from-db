@@ -82,17 +82,20 @@ def collect_invoice_data_from_openstack(database, billing_start, billing_end, ra
             assert runtime <= (billing_end - billing_start).total_seconds()
 
             if runtime > 0:
-                try:
-                    su = i.service_units
-                    su_hours = runtime * su
+                su = i.service_units
+                su_hours = runtime * su
 
-                    if i.service_unit_type == "CPU":
-                        invoice.cpu_su_hours += su_hours
-                    elif i.service_unit_type == "GPU A100":
-                        invoice.gpu_a100_su_hours += su_hours
-                    elif i.service_unit_type == "GPU V100":
-                        invoice.gpu_v100_su_hours += su_hours
-                except Exception:
+                if i.service_unit_type == "CPU":
+                    invoice.cpu_su_hours += su_hours
+                elif i.service_unit_type == "GPU A100":
+                    invoice.gpu_a100_su_hours += su_hours
+                elif i.service_unit_type == "GPU V100":
+                    invoice.gpu_v100_su_hours += su_hours
+                elif i.service_unit_type == "GPU K80":
+                    invoice.gpu_k80_su_hours += su_hours
+                elif i.service_unit_type == "GPU A2":
+                    invoice.gpu_a2_su_hours += su_hours
+                else:
                     raise Exception("Invalid flavor.")
 
         invoices.append(invoice)
