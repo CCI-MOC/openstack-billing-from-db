@@ -3,6 +3,7 @@ import math
 import datetime
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
+from typing import Optional
 
 import mysql.connector
 
@@ -64,9 +65,22 @@ class Instance(object):
     flavor: Flavor
     events: list[InstanceEvent]
 
+    deleted_at: Optional[datetime.datetime] = None
+    no_delete_action: bool = False
+
     def get_runtime_during(self, start_time, end_time):
         total_seconds_running = 0
         last_start = None
+        delete_action_found = False
+
+        # If the instance as a deleted_at time, clamp it to within
+        # the invoicing period.
+        if self.deleted_at:
+            if self.deleted_at < start_time:
+                self.deleted_at = start_time
+
+            if self.deleted_at > end_time:
+                self.deleted_at = end_time
 
         for event in self.events:
             if event.time < start_time:
@@ -77,6 +91,11 @@ class Instance(object):
 
             if event.name in ["create", "start"] and event.message != "Error":
                 last_start = event.time
+
+            # Some deleted instances do not have a delete event, they do
+            # however have a deleted_at timestamp.
+            if event.name == "delete":
+                delete_action_found = True
 
             if event.name in ["delete", "stop"]:
                 if not last_start:
@@ -90,6 +109,10 @@ class Instance(object):
                 # Still don't quite know how to get the starting flavor and the ending one
                 # but we seemed to have gotten zero resizes in a year.
                 raise Exception()
+
+        if self.deleted_at and not delete_action_found:
+            self.no_delete_action = True
+            end_time = self.deleted_at
 
         if last_start:
             total_seconds_running += (end_time - last_start).total_seconds()
@@ -181,14 +204,16 @@ class Database(BaseDatabase):
 
     def get_instances(self, project) -> list[Instance]:
         cursor = self.db_nova.cursor(dictionary=True)
-        cursor.execute(f"select uuid, hostname, instance_type_id from instances"
+        cursor.execute(f"select uuid, hostname, instance_type_id, deleted_at"
+                       f" from instances"
                        f" where project_id = \"{project}\"")
         return [
             Instance(
                 uuid=instance["uuid"],
                 name=instance["hostname"],
                 flavor=self.flavors[instance["instance_type_id"]],
-                events=self.get_events(instance["uuid"])
+                events=self.get_events(instance["uuid"]),
+                deleted_at=instance["deleted_at"],
             ) for instance in cursor.fetchall()
         ]
 
