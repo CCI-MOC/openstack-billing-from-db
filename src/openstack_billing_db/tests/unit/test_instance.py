@@ -83,3 +83,70 @@ def test_instance_runtime_stopped_and_started():
         datetime(year=2000, month=2, day=1, hour=0, minute=0, second=0)
     )
     assert r == 2
+
+
+def test_instance_no_delete_action():
+    time = datetime(year=2000, month=1, day=2, hour=0, minute=0, second=0)
+    events = [
+        InstanceEvent(time=time, name="create", message=""),
+    ]
+    i = Instance(uuid=uuid.uuid4().hex,
+                 name=uuid.uuid4().hex,
+                 flavor=FLAVORS[1],
+                 events=events,
+                 deleted_at=time + timedelta(days=1, minutes=40))
+
+    # In current billing cycle
+    assert i.get_runtime_during(
+        datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0),
+        datetime(year=2000, month=2, day=1, hour=0, minute=0, second=0)
+    ) == 25
+
+    # Outside billing cycles
+    assert i.get_runtime_during(
+        datetime(year=2000, month=2, day=1, hour=0, minute=0, second=0),
+        datetime(year=2000, month=3, day=1, hour=0, minute=0, second=0)
+    ) == 0
+
+    assert i.get_runtime_during(
+        datetime(year=1999, month=11, day=1, hour=0, minute=0, second=0),
+        datetime(year=2000, month=12, day=1, hour=0, minute=0, second=0)
+    ) == 0
+
+
+def test_instance_no_delete_action_stopped():
+    time = datetime(year=2000, month=1, day=2, hour=0, minute=0, second=0)
+    events = [
+        InstanceEvent(time=time, name="create", message=""),
+        InstanceEvent(time=time + timedelta(minutes=40), name="stop", message=""),
+    ]
+    i = Instance(uuid=uuid.uuid4().hex,
+                 name=uuid.uuid4().hex,
+                 flavor=FLAVORS[1],
+                 events=events,
+                 deleted_at=time + timedelta(days=1, minutes=40))
+
+    assert i.get_runtime_during(
+        datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0),
+        datetime(year=2000, month=2, day=1, hour=0, minute=0, second=0)
+    ) == 1
+
+
+def test_instance_no_delete_action_stopped_restarted():
+    time = datetime(year=2000, month=1, day=2, hour=0, minute=0, second=0)
+    events = [
+        InstanceEvent(time=time, name="create", message=""),
+        InstanceEvent(time=time + timedelta(minutes=40), name="stop", message=""),
+        InstanceEvent(time=time + timedelta(days=1), name="start", message=""),
+    ]
+    i = Instance(uuid=uuid.uuid4().hex,
+                 name=uuid.uuid4().hex,
+                 flavor=FLAVORS[1],
+                 events=events,
+                 deleted_at=time + timedelta(days=1, minutes=40))
+
+    assert i.get_runtime_during(
+        datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0),
+        datetime(year=2000, month=2, day=1, hour=0, minute=0, second=0)
+    ) == 2
+
