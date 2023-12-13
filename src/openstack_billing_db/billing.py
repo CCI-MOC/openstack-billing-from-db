@@ -2,6 +2,7 @@ import csv
 from dataclasses import dataclass
 from decimal import Decimal
 import json
+import math
 
 from openstack_billing_db import model
 
@@ -13,6 +14,8 @@ class Rates(object):
     gpu_v100: Decimal
     gpu_a2: Decimal
     gpu_k80: Decimal
+
+    include_stopped_runtime: bool
 
     cpu_su_name: str = "OpenStack CPU"
     gpu_a100_su_name: str = "OpenStack GPUA100"
@@ -79,11 +82,16 @@ def collect_invoice_data_from_openstack(database, billing_start, billing_end, ra
 
         for i in project.instances:  # type: model.Instance
             runtime = i.get_runtime_during(billing_start, billing_end)
-            assert runtime <= (billing_end - billing_start).total_seconds()
+            runtime_seconds = runtime.total_seconds_running
+            if rates.include_stopped_runtime:
+                runtime_seconds += runtime.total_seconds_stopped
 
-            if runtime > 0:
+            assert runtime_seconds <= (billing_end - billing_start).total_seconds()
+            runtime_hours = math.ceil(runtime_seconds / 3600)
+
+            if runtime_hours > 0:
                 su = i.service_units
-                su_hours = runtime * su
+                su_hours = runtime_hours * su
 
                 if i.service_unit_type == "CPU":
                     invoice.cpu_su_hours += su_hours

@@ -59,6 +59,12 @@ class InstanceEvent(object):
 
 
 @dataclass
+class InstanceRuntime(object):
+    total_seconds_running: int = 0
+    total_seconds_stopped: int = 0
+
+
+@dataclass
 class Instance(object):
     uuid: str
     name: str
@@ -68,29 +74,43 @@ class Instance(object):
     deleted_at: Optional[datetime.datetime] = None
     no_delete_action: bool = False
 
+    @staticmethod
+    def _clamp_time(time, min_time, max_time):
+        if time < min_time:
+            time = min_time
+        if time > max_time:
+            time = max_time
+        return time
+
     def get_runtime_during(self, start_time, end_time):
-        total_seconds_running = 0
-        last_start = None
+        runtime = InstanceRuntime()
+
+        last_start = None  # Time the instance was last started
+        last_stop = None  # Time the instance was last stopped
+        in_error_state = False
         delete_action_found = False
 
         # If the instance as a deleted_at time, clamp it to within
         # the invoicing period.
         if self.deleted_at:
-            if self.deleted_at < start_time:
-                self.deleted_at = start_time
-
-            if self.deleted_at > end_time:
-                self.deleted_at = end_time
+            self.deleted_at = self._clamp_time(self.deleted_at, start_time, end_time)
 
         for event in self.events:
-            if event.time < start_time:
-                event.time = start_time
+            event.time = self._clamp_time(event.time, start_time, end_time)
 
-            if event.time > end_time:
-                event.time = end_time
+            if event.message == "Error":
+                in_error_state = True
+                continue
 
-            if event.name in ["create", "start"] and event.message != "Error":
+            if event.name in ["create", "start"]:
                 last_start = event.time
+                in_error_state = False
+
+                # Count stopped time from last known stop.
+                if last_stop:
+                    runtime.total_seconds_stopped += (
+                            last_start - last_stop).total_seconds()
+                    last_stop = None
 
             # Some deleted instances do not have a delete event, they do
             # however have a deleted_at timestamp.
@@ -98,14 +118,21 @@ class Instance(object):
                 delete_action_found = True
 
             if event.name in ["delete", "stop"]:
-                if not last_start:
-                    # Deletions don't create a preceding stop event, and stopped
-                    # instances can be deleted.
-                    continue
-                total_seconds_running += (event.time - last_start).total_seconds()
-                last_start = None
+                last_stop = event.time
 
-            if event.name == ["resize"]:
+                # Count running time from last known start.
+                if last_start:
+                    runtime.total_seconds_running += (
+                            last_stop - last_start).total_seconds()
+                    last_start = None
+
+            if event.name == "delete":
+                # Prevent counting deletion as a stopped state by
+                # unsetting the last stop time.
+                last_stop = None
+                break
+
+            if event.name == "resize":
                 # Still don't quite know how to get the starting flavor and the ending one
                 # but we seemed to have gotten zero resizes in a year.
                 raise Exception()
@@ -114,10 +141,14 @@ class Instance(object):
             self.no_delete_action = True
             end_time = self.deleted_at
 
+        # Handle the time since the last event.
         if last_start:
-            total_seconds_running += (end_time - last_start).total_seconds()
+            runtime.total_seconds_running += (end_time - last_start).total_seconds()
 
-        return math.ceil(total_seconds_running / 3600)
+        if last_stop and not in_error_state:
+            runtime.total_seconds_stopped += (end_time - last_stop).total_seconds()
+
+        return runtime
 
     @property
     def service_units(self):
