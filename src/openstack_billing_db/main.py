@@ -28,6 +28,11 @@ def main():
         type=parse_time_argument
     )
     parser.add_argument(
+        "--invoice-month",
+        default=None,
+        help="Use the first column for Invoice Month, rather than Interval."
+    )
+    parser.add_argument(
         "--coldfront-data-file",
         default=None,
         help=("Path to JSON Output of ColdFront's /api/allocations."
@@ -96,7 +101,8 @@ def main():
         args.output,
         rates,
         coldfront_data_file=args.coldfront_data_file,
-        flavors_cache_file=args.flavors_cache_file
+        flavors_cache_file=args.flavors_cache_file,
+        invoice_month=args.invoice_month,
     )
 
 
