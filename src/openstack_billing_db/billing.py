@@ -143,7 +143,7 @@ def merge_coldfront_data(invoices, coldfront_data_file):
             continue
 
 
-def write(invoices, output):
+def write(invoices, output, invoice_month=None):
     with open(output, 'w', newline='') as f:
         csv_invoice_writer = csv.writer(
             f, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL
@@ -151,7 +151,7 @@ def write(invoices, output):
         # Write Headers
         csv_invoice_writer.writerow(
             [
-                "Interval",
+                "Invoice Month" if invoice_month else "Interval",
                 "Project - Allocation",
                 "Project - Allocation ID",
                 "Manager (PI)",
@@ -174,9 +174,10 @@ def write(invoices, output):
                 su_name = invoice.rates.__getattribute__(f"{invoice_type}_su_name")
                 cost = invoice.__getattribute__(f"{invoice_type}_su_cost")
                 if hours > 0:
+
                     csv_invoice_writer.writerow(
                         [
-                            invoice.invoice_interval,
+                            invoice_month if invoice_month else invoice.invoice_interval,
                             invoice.project_name,
                             invoice.project_id,
                             invoice.pi,
@@ -193,7 +194,8 @@ def write(invoices, output):
 
 
 def generate_billing(start, end, output, rates,
-                     coldfront_data_file=None, flavors_cache_file=None):
+                     coldfront_data_file=None, flavors_cache_file=None,
+                     invoice_month=None):
     # Flavors are occasionally deleted leaving no reference in the
     # database.
     flavors_cache = None
@@ -211,4 +213,4 @@ def generate_billing(start, end, output, rates,
     invoices = collect_invoice_data_from_openstack(database, start, end, rates)
     if coldfront_data_file:
         merge_coldfront_data(invoices, coldfront_data_file)
-    write(invoices, output)
+    write(invoices, output, invoice_month)
