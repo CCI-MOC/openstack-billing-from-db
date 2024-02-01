@@ -170,25 +170,13 @@ class BaseDatabase(object):
 
 class Database(BaseDatabase):
 
-    def __init__(self, initial_flavors=None):
+    def __init__(self):
         self.db_nova = mysql.connector.connect(
             host="127.0.0.1",
             database="nova",
             user="root",
             password="root",
         )
-
-        self.db_nova_api = mysql.connector.connect(
-            host="127.0.0.1",
-            database="nova_api",
-            user="root",
-            password="root",
-        )
-
-        self.flavors = dict()
-        if initial_flavors:
-            self.flavors.update({f.id: f for f in list(initial_flavors)})
-        self.flavors.update(self.get_flavors())
 
         self._projects = None
 
@@ -198,22 +186,6 @@ class Database(BaseDatabase):
             self._projects = self.get_projects()
 
         return self._projects
-
-    def get_flavors(self) -> dict[Flavor]:
-        cursor = self.db_nova_api.cursor(dictionary=True)
-        cursor.execute(
-            "select id, name, vcpus, memory_mb, root_gb from flavors"
-        )
-        result = cursor.fetchall()
-
-        flavors = dict()
-        for flavor in result:
-            flavors[flavor["id"]] = Flavor(id=flavor["id"],
-                                           name=flavor["name"],
-                                           vcpus=flavor["vcpus"],
-                                           memory=flavor["memory_mb"],
-                                           storage=flavor["root_gb"])
-        return flavors
 
     def get_events(self, instance_uuid) -> list[InstanceEvent]:
         cursor = self.db_nova.cursor(dictionary=True)
