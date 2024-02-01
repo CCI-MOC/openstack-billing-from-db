@@ -1,3 +1,4 @@
+import json
 from abc import ABC, abstractmethod
 import math
 import datetime
@@ -229,6 +230,8 @@ class Database(BaseDatabase):
         ]
 
     def get_instances(self, project) -> list[Instance]:
+        instances = []
+
         cursor = self.db_nova.cursor(dictionary=True)
         cursor.execute(f"""
             select
@@ -243,16 +246,54 @@ class Database(BaseDatabase):
             left join instance_extra on instances.uuid = instance_extra.instance_uuid
             where instances.project_id = "{project}"
         """)
-        
-        return [
-            Instance(
+
+        for instance in cursor.fetchall():
+            pci_info = json.loads(instance["pci_requests"])
+            su_name = "cpu"
+            if pci_info:
+                # The PCI Requests column of the database contains a JSON
+                # object with the below format. If the instance has an
+                # associated GPU, it will show up in the list of PCI
+                # requests as below.
+                #
+                # [
+                #   {
+                #     "count": 1,
+                #     "spec": [...],
+                #     "alias_name": "V100",
+                #     "is_new": false,
+                #     "numa_policy": "legacy",
+                #     "request_id": null,
+                #     "requester_id": null
+                #   }
+                # ]
+                if len(pci_info) > 1:
+                    raise Exception
+
+                pci_name = pci_info[0].get("alias_name", "").lower()
+                if pci_name not in ["a100", "v100", "k80"]:
+                    raise Exception
+
+                count = pci_info[0]['count']
+                su_name = f"gpu-{pci_name}.{count}"
+
+            flavor = Flavor(
+                id=instance["instance_type_id"],
+                name=su_name,
+                vcpus=instance["vcpus"],
+                memory=instance["memory_mb"],
+                storage=20,
+            )
+
+            i = Instance(
                 uuid=instance["uuid"],
                 name=instance["hostname"],
-                flavor=self.flavors[instance["instance_type_id"]],
+                flavor=flavor,
                 events=self.get_events(instance["uuid"]),
                 deleted_at=instance["deleted_at"],
-            ) for instance in cursor.fetchall()
-        ]
+            )
+            instances.append(i)
+        return instances
 
     def get_projects(self) -> list[Project]:
         cursor = self.db_nova.cursor()
