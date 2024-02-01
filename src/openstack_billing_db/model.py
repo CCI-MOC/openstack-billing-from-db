@@ -132,11 +132,6 @@ class Instance(object):
                 last_stop = None
                 break
 
-            if event.name == "resize":
-                # Still don't quite know how to get the starting flavor and the ending one
-                # but we seemed to have gotten zero resizes in a year.
-                raise Exception()
-
         if self.deleted_at and not delete_action_found:
             self.no_delete_action = True
             end_time = self.deleted_at
@@ -235,9 +230,20 @@ class Database(BaseDatabase):
 
     def get_instances(self, project) -> list[Instance]:
         cursor = self.db_nova.cursor(dictionary=True)
-        cursor.execute(f"select uuid, hostname, instance_type_id, deleted_at"
-                       f" from instances"
-                       f" where project_id = \"{project}\"")
+        cursor.execute(f"""
+            select
+                instances.uuid,
+                hostname,
+                instance_type_id,
+                memory_mb,
+                vcpus,
+                instances.deleted_at,
+                pci_requests
+            from instances
+            left join instance_extra on instances.uuid = instance_extra.instance_uuid
+            where instances.project_id = "{project}"
+        """)
+        
         return [
             Instance(
                 uuid=instance["uuid"],
