@@ -202,7 +202,7 @@ def generate_billing(start, end, output, rates,
                      invoice_month=None,
                      upload_to_s3=False):
 
-    database = model.Database()
+    database = model.Database(start=start)
 
     invoices = collect_invoice_data_from_openstack(database, start, end, rates)
     if coldfront_data_file:
