@@ -170,13 +170,14 @@ class BaseDatabase(object):
 
 class Database(BaseDatabase):
 
-    def __init__(self):
+    def __init__(self, start):
         self.db_nova = mysql.connector.connect(
             host="127.0.0.1",
             database="nova",
             user="root",
             password="root",
         )
+        self.start = start
 
         self._projects = None
 
@@ -216,7 +217,10 @@ class Database(BaseDatabase):
                 pci_requests
             from instances
             left join instance_extra on instances.uuid = instance_extra.instance_uuid
-            where instances.project_id = "{project}"
+            where
+                instances.project_id = "{project}"
+                and (instances.deleted_at > "{self.start.isoformat()}"
+                    or instances.deleted = 0)
         """)
 
         for instance in cursor.fetchall():
