@@ -194,21 +194,10 @@ def write(invoices, output, invoice_month=None):
 
 
 def generate_billing(start, end, output, rates,
-                     coldfront_data_file=None, flavors_cache_file=None,
+                     coldfront_data_file=None,
                      invoice_month=None):
-    # Flavors are occasionally deleted leaving no reference in the
-    # database.
-    flavors_cache = None
-    if flavors_cache_file:
-        flavors_cache = load_flavors_cache(flavors_cache_file)
 
-    database = model.Database(initial_flavors=flavors_cache)
-
-    if flavors_cache_file:
-        write_flavors_cache(
-            flavors_cache_file,
-            [f.to_dict() for f in database.flavors.values()]
-        )
+    database = model.Database()
 
     invoices = collect_invoice_data_from_openstack(database, start, end, rates)
     if coldfront_data_file:

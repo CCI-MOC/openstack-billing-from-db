@@ -39,11 +39,6 @@ def main():
               "Used for populating project names and PIs.")
     )
     parser.add_argument(
-        "--flavors-cache-file",
-        default=None,
-        help="Path to file to cache previously encountered flavors."
-    )
-    parser.add_argument(
         "--rate-cpu-su",
         default=0,
         type=Decimal,
@@ -101,7 +96,6 @@ def main():
         args.output,
         rates,
         coldfront_data_file=args.coldfront_data_file,
-        flavors_cache_file=args.flavors_cache_file,
         invoice_month=args.invoice_month,
     )
 

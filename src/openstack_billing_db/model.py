@@ -1,3 +1,4 @@
+import json
 from abc import ABC, abstractmethod
 import math
 import datetime
@@ -132,11 +133,6 @@ class Instance(object):
                 last_stop = None
                 break
 
-            if event.name == "resize":
-                # Still don't quite know how to get the starting flavor and the ending one
-                # but we seemed to have gotten zero resizes in a year.
-                raise Exception()
-
         if self.deleted_at and not delete_action_found:
             self.no_delete_action = True
             end_time = self.deleted_at
@@ -174,25 +170,13 @@ class BaseDatabase(object):
 
 class Database(BaseDatabase):
 
-    def __init__(self, initial_flavors=None):
+    def __init__(self):
         self.db_nova = mysql.connector.connect(
             host="127.0.0.1",
             database="nova",
             user="root",
             password="root",
         )
-
-        self.db_nova_api = mysql.connector.connect(
-            host="127.0.0.1",
-            database="nova_api",
-            user="root",
-            password="root",
-        )
-
-        self.flavors = dict()
-        if initial_flavors:
-            self.flavors.update({f.id: f for f in list(initial_flavors)})
-        self.flavors.update(self.get_flavors())
 
         self._projects = None
 
@@ -202,22 +186,6 @@ class Database(BaseDatabase):
             self._projects = self.get_projects()
 
         return self._projects
-
-    def get_flavors(self) -> dict[Flavor]:
-        cursor = self.db_nova_api.cursor(dictionary=True)
-        cursor.execute(
-            "select id, name, vcpus, memory_mb, root_gb from flavors"
-        )
-        result = cursor.fetchall()
-
-        flavors = dict()
-        for flavor in result:
-            flavors[flavor["id"]] = Flavor(id=flavor["id"],
-                                           name=flavor["name"],
-                                           vcpus=flavor["vcpus"],
-                                           memory=flavor["memory_mb"],
-                                           storage=flavor["root_gb"])
-        return flavors
 
     def get_events(self, instance_uuid) -> list[InstanceEvent]:
         cursor = self.db_nova.cursor(dictionary=True)
@@ -234,19 +202,70 @@ class Database(BaseDatabase):
         ]
 
     def get_instances(self, project) -> list[Instance]:
+        instances = []
+
         cursor = self.db_nova.cursor(dictionary=True)
-        cursor.execute(f"select uuid, hostname, instance_type_id, deleted_at"
-                       f" from instances"
-                       f" where project_id = \"{project}\"")
-        return [
-            Instance(
+        cursor.execute(f"""
+            select
+                instances.uuid,
+                hostname,
+                instance_type_id,
+                memory_mb,
+                vcpus,
+                instances.deleted_at,
+                pci_requests
+            from instances
+            left join instance_extra on instances.uuid = instance_extra.instance_uuid
+            where instances.project_id = "{project}"
+        """)
+
+        for instance in cursor.fetchall():
+            pci_info = json.loads(instance["pci_requests"])
+            su_name = "cpu"
+            if pci_info:
+                # The PCI Requests column of the database contains a JSON
+                # object with the below format. If the instance has an
+                # associated GPU, it will show up in the list of PCI
+                # requests as below.
+                #
+                # [
+                #   {
+                #     "count": 1,
+                #     "spec": [...],
+                #     "alias_name": "V100",
+                #     "is_new": false,
+                #     "numa_policy": "legacy",
+                #     "request_id": null,
+                #     "requester_id": null
+                #   }
+                # ]
+                if len(pci_info) > 1:
+                    raise Exception
+
+                pci_name = pci_info[0].get("alias_name", "").lower()
+                if pci_name not in ["a100", "v100", "k80"]:
+                    raise Exception
+
+                count = pci_info[0]['count']
+                su_name = f"gpu-{pci_name}.{count}"
+
+            flavor = Flavor(
+                id=instance["instance_type_id"],
+                name=su_name,
+                vcpus=instance["vcpus"],
+                memory=instance["memory_mb"],
+                storage=20,
+            )
+
+            i = Instance(
                 uuid=instance["uuid"],
                 name=instance["hostname"],
-                flavor=self.flavors[instance["instance_type_id"]],
+                flavor=flavor,
                 events=self.get_events(instance["uuid"]),
                 deleted_at=instance["deleted_at"],
-            ) for instance in cursor.fetchall()
-        ]
+            )
+            instances.append(i)
+        return instances
 
     def get_projects(self) -> list[Project]:
         cursor = self.db_nova.cursor()
