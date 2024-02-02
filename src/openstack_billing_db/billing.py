@@ -1,10 +1,14 @@
 import csv
+from datetime import datetime
 from dataclasses import dataclass
 from decimal import Decimal
 import json
 import math
+import os
 
 from openstack_billing_db import model
+
+import boto3
 
 
 @dataclass()
@@ -195,7 +199,8 @@ def write(invoices, output, invoice_month=None):
 
 def generate_billing(start, end, output, rates,
                      coldfront_data_file=None,
-                     invoice_month=None):
+                     invoice_month=None,
+                     upload_to_s3=False):
 
     database = model.Database()
 
@@ -203,3 +208,33 @@ def generate_billing(start, end, output, rates,
     if coldfront_data_file:
         merge_coldfront_data(invoices, coldfront_data_file)
     write(invoices, output, invoice_month)
+
+    if upload_to_s3:
+        s3_key_id = os.getenv("S3_OUTPUT_ACCESS_KEY_ID")
+        s3_secret = os.getenv("S3_OUTPUT_SECRET_ACCESS_KEY")
+
+        if not s3_key_id or not s3_secret:
+            raise Exception("Must provide S3_OUTPUT_ACCESS_KEY_ID and"
+                            " S3_OUTPUT_SECRET_ACCESS_KEY environment variables.")
+        if not invoice_month:
+            raise Exception("No invoice month specified. Required for S3 upload.")
+
+        s3 = boto3.client(
+            "s3",
+            endpoint_url="https://s3.us-east-005.backblazeb2.com",
+            aws_access_key_id=s3_key_id,
+            aws_secret_access_key=s3_secret,
+        )
+
+        primary_location = (
+            f"Invoices/{invoice_month}/"
+            f"Service Invoices/NERC OpenStack {invoice_month}.csv"
+        )
+        s3.upload_file(output, Bucket="nerc-invoicing", Key=primary_location)
+
+        timestamp = datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
+        secondary_location = (
+            f"Invoices/{invoice_month}/"
+            f"Archive/NERC OpenStack {invoice_month} {timestamp}.csv"
+        )
+        s3.upload_file(output, Bucket="nerc-invoicing", Key=secondary_location)

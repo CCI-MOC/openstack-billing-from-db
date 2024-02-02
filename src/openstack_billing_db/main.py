@@ -75,7 +75,14 @@ def main():
         help="Include stopped runtime for instances."
     )
     parser.add_argument(
+        "--upload-to-s3",
+        default=False,
+        type=bool,
+        help="Upload to Backblaze B2 Bucket for MOC."
+    )
+    parser.add_argument(
         "output",
+        default="/tmp/openstack_invoices.csv",
         help="Output path for invoice in CSV format."
     )
 
@@ -97,6 +104,7 @@ def main():
         rates,
         coldfront_data_file=args.coldfront_data_file,
         invoice_month=args.invoice_month,
+        upload_to_s3=args.upload_to_s3,
     )
 
 
