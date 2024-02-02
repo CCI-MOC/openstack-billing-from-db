@@ -78,7 +78,12 @@ def main():
         "--upload-to-s3",
         default=False,
         type=bool,
-        help="Upload to Backblaze B2 Bucket for MOC."
+        help=("Uploads the CSV result to S3 compatible storage."
+              " Must provide S3_OUTPUT_ACCESS_KEY_ID and"
+              " S3_OUTPUT_SECRET_ACCESS_KEY environment variables."
+              " Defaults to Backblaze and to nerc-invoicing bucket"
+              " but can be configured through S3_OUTPUT_BUCKET and"
+              " S3_OUTPUT_ENDPOINT_URL environment variables.")
     )
     parser.add_argument(
         "output",
