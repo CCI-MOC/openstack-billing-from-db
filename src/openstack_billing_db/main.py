@@ -75,7 +75,19 @@ def main():
         help="Include stopped runtime for instances."
     )
     parser.add_argument(
+        "--upload-to-s3",
+        default=False,
+        type=bool,
+        help=("Uploads the CSV result to S3 compatible storage."
+              " Must provide S3_OUTPUT_ACCESS_KEY_ID and"
+              " S3_OUTPUT_SECRET_ACCESS_KEY environment variables."
+              " Defaults to Backblaze and to nerc-invoicing bucket"
+              " but can be configured through S3_OUTPUT_BUCKET and"
+              " S3_OUTPUT_ENDPOINT_URL environment variables.")
+    )
+    parser.add_argument(
         "output",
+        default="/tmp/openstack_invoices.csv",
         help="Output path for invoice in CSV format."
     )
 
@@ -97,6 +109,7 @@ def main():
         rates,
         coldfront_data_file=args.coldfront_data_file,
         invoice_month=args.invoice_month,
+        upload_to_s3=args.upload_to_s3,
     )
 
 
