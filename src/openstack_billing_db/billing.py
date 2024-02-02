@@ -212,6 +212,7 @@ def generate_billing(start, end, output, rates,
     if upload_to_s3:
         s3_endpoint = os.getenv("S3_OUTPUT_ENDPOINT_URL",
                                 "https://s3.us-east-005.backblazeb2.com")
+        s3_bucket = os.getenv("S3_OUTPUT_BUCKET", "nerc-invoicing")
         s3_key_id = os.getenv("S3_OUTPUT_ACCESS_KEY_ID")
         s3_secret = os.getenv("S3_OUTPUT_SECRET_ACCESS_KEY")
 
@@ -232,11 +233,11 @@ def generate_billing(start, end, output, rates,
             f"Invoices/{invoice_month}/"
             f"Service Invoices/NERC OpenStack {invoice_month}.csv"
         )
-        s3.upload_file(output, Bucket="nerc-invoicing", Key=primary_location)
+        s3.upload_file(output, Bucket=s3_bucket, Key=primary_location)
 
         timestamp = datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
         secondary_location = (
             f"Invoices/{invoice_month}/"
             f"Archive/NERC OpenStack {invoice_month} {timestamp}.csv"
         )
-        s3.upload_file(output, Bucket="nerc-invoicing", Key=secondary_location)
+        s3.upload_file(output, Bucket=s3_bucket, Key=secondary_location)
