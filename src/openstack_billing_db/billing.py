@@ -210,6 +210,8 @@ def generate_billing(start, end, output, rates,
     write(invoices, output, invoice_month)
 
     if upload_to_s3:
+        s3_endpoint = os.getenv("S3_OUTPUT_ENDPOINT_URL",
+                                "https://s3.us-east-005.backblazeb2.com")
         s3_key_id = os.getenv("S3_OUTPUT_ACCESS_KEY_ID")
         s3_secret = os.getenv("S3_OUTPUT_SECRET_ACCESS_KEY")
 
@@ -221,7 +223,7 @@ def generate_billing(start, end, output, rates,
 
         s3 = boto3.client(
             "s3",
-            endpoint_url="https://s3.us-east-005.backblazeb2.com",
+            endpoint_url=s3_endpoint,
             aws_access_key_id=s3_key_id,
             aws_secret_access_key=s3_secret,
         )
