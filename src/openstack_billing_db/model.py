@@ -4,9 +4,9 @@ import math
 import datetime
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
+import sqlite3
 from typing import Optional
 
-import mysql.connector
 
 
 @dataclass_json()
@@ -77,6 +77,10 @@ class Instance(object):
 
     @staticmethod
     def _clamp_time(time, min_time, max_time):
+        # Note(knikolla): SQLite gives me a string here, sometimes.
+        if isinstance(time, str):
+            time = datetime.datetime.fromisoformat(time)
+
         if time < min_time:
             time = min_time
         if time > max_time:
@@ -170,13 +174,11 @@ class BaseDatabase(object):
 
 class Database(BaseDatabase):
 
-    def __init__(self, start):
-        self.db_nova = mysql.connector.connect(
-            host="127.0.0.1",
-            database="nova",
-            user="root",
-            password="root",
-        )
+    def __init__(self, start, sql_dump_location: str):
+        self.db_nova = sqlite3.connect(":memory:")
+        self.db_nova.row_factory = sqlite3.Row
+        with open(sql_dump_location, 'r') as sql:
+            self.db_nova.executescript(sql.read())
         self.start = start
 
         self._projects = None
@@ -189,7 +191,7 @@ class Database(BaseDatabase):
         return self._projects
 
     def get_events(self, instance_uuid) -> list[InstanceEvent]:
-        cursor = self.db_nova.cursor(dictionary=True)
+        cursor = self.db_nova.cursor()
         cursor.execute(
             f"select created_at, action, message from instance_actions where"
             f" instance_uuid = \"{instance_uuid}\" order by created_at"
@@ -205,7 +207,7 @@ class Database(BaseDatabase):
     def get_instances(self, project) -> list[Instance]:
         instances = []
 
-        cursor = self.db_nova.cursor(dictionary=True)
+        cursor = self.db_nova.cursor()
         cursor.execute(f"""
             select
                 instances.uuid,
@@ -273,7 +275,7 @@ class Database(BaseDatabase):
 
     def get_projects(self) -> list[Project]:
         cursor = self.db_nova.cursor()
-        cursor.execute("select unique(project_id) from instances")
+        cursor.execute("select distinct project_id from instances")
         return [
             Project(
                 uuid=project[0],
