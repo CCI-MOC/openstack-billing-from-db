@@ -39,6 +39,12 @@ def main():
               "Used for populating project names and PIs.")
     )
     parser.add_argument(
+        "--sql-dump-file",
+        required=True,
+        help=("Path to SQL Dump of Nova DB. Must have been converted to SQLite3"
+              "compatible format using https://github.com/dumblob/mysql2sqlite.")
+    )
+    parser.add_argument(
         "--rate-cpu-su",
         default=0,
         type=Decimal,
@@ -110,6 +116,7 @@ def main():
         coldfront_data_file=args.coldfront_data_file,
         invoice_month=args.invoice_month,
         upload_to_s3=args.upload_to_s3,
+        sql_dump_file=args.sql_dump_file,
     )
 
 
