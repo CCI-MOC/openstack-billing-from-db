@@ -1,0 +1,6 @@
+commonLabels:
+  app: invoicing-openstack
+resources:
+  - cronjob.yaml
+  - namespace.yaml
+namespace: invoicing-openstack
