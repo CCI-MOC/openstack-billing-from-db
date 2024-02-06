@@ -4,6 +4,8 @@ import os
 import subprocess
 
 import boto3
+import requests
+from requests.auth import HTTPBasicAuth
 
 logger = logging.getLogger(__name__)
 
@@ -112,3 +114,57 @@ def convert_mysqldump_to_sqlite(path_to_dump) -> str:
 
     logger.info(f"Converted at {destination_path}.")
     return destination_path
+
+
+def get_keycloak_session():
+    """Authenticate as a client with Keycloak to receive an access token."""
+    keycloak_token_url = os.getenv(
+        "KEYCLOAK_TOKEN_URL",
+        ("https://keycloak.mss.mghpcc.org/auth/realms/mss"
+         "/protocol/openid-connect/token")
+    )
+    keycloak_client_id = os.getenv("KEYCLOAK_CLIENT_ID")
+    keycloak_client_secret = os.getenv("KEYCLOAK_CLIENT_SECRET")
+
+    if not keycloak_client_id or not keycloak_client_secret:
+        raise Exception("Must provide KEYCLOAK_CLIENT_ID and"
+                        " KEYCLOAK_CLIENT_SECRET environment variables.")
+
+    r = requests.post(
+        keycloak_token_url,
+        data={"grant_type": "client_credentials"},
+        auth=HTTPBasicAuth(keycloak_client_id, keycloak_client_secret),
+    )
+    client_token = r.json()["access_token"]
+
+    session = requests.session()
+    headers = {
+        "Authorization": f"Bearer {client_token}",
+        "Content-Type": "application/json",
+    }
+    session.headers.update(headers)
+    return session
+
+def download_coldfront_data(download_location=None) -> str:
+    """Downloads allocation data from the ColdFront API.
+
+    Returns location of downloaded JSON file.
+    """
+
+    colfront_url = os.getenv("COLDFRONT_URL",
+                             "https://coldfront.mss.mghpcc.org")
+    allocations_url = f"{colfront_url}/api/allocations?all=true"
+
+    logger.info(f"Making request to ColdFront at {allocations_url}")
+    r = get_keycloak_session().get(allocations_url)
+
+    if not r.status_code == 200:
+        raise Exception(f"{r.status_code} Error making API request to ColdFront.")
+
+    if not download_location:
+        download_location = "/tmp/coldfront_data.json"
+    with open(download_location, "w") as f:
+        f.write(r.text)
+
+    logger.info(f"Downloaded ColdFront data at {download_location}.")
+    return download_location
