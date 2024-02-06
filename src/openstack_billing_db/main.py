@@ -1,8 +1,12 @@
 from decimal import Decimal
 from datetime import datetime
 import argparse
+import logging
 
-from openstack_billing_db import billing
+from openstack_billing_db import billing, fetch
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def parse_time_argument(arg):
@@ -40,9 +44,26 @@ def main():
     )
     parser.add_argument(
         "--sql-dump-file",
-        required=True,
+        default="",
         help=("Path to SQL Dump of Nova DB. Must have been converted to SQLite3"
               "compatible format using https://github.com/dumblob/mysql2sqlite.")
+    )
+    parser.add_argument(
+        "--convert-sql-dump-file-to-sqlite",
+        default=True,
+        help=("Automatically convert SQL dump to SQlite3 compatible format using"
+              " https://github.com/dumblob/mysql2sqlite.")
+    )
+    parser.add_argument(
+        "--download-sql-dump-from-s3",
+        default=False,
+        help=("Downloads Nova DB Dump from S3."
+              " Must provide S3_INPUT_ACCESS_KEY_ID and"
+              " S3_INPUT_SECRET_ACCESS_KEY environment variables."
+              " Defaults to Backblaze and to nerc-invoicing bucket"
+              " but can be configured through S3_INPUT_BUCKET and"
+              " S3_OUTPUT_ENDPOINT_URL environment variables."
+              " Automatically decompresses the file if gzipped.")
     )
     parser.add_argument(
         "--rate-cpu-su",
@@ -99,6 +120,18 @@ def main():
 
     args = parser.parse_args()
 
+    dump_file = args.sql_dump_file
+
+    if args.download_sql_dump_from_s3:
+        dump_file = fetch.download_latest_dump_from_s3()
+
+    if args.convert_sql_dump_file_to_sqlite:
+        dump_file = fetch.convert_mysqldump_to_sqlite(dump_file)
+
+    if not dump_file:
+        raise Exception("Must provide either --sql_dump_file"
+                        "or --download_dump_from_s3.")
+
     rates = billing.Rates(
         cpu=args.rate_cpu_su,
         gpu_a100=args.rate_gpu_a100_su,
@@ -116,7 +149,7 @@ def main():
         coldfront_data_file=args.coldfront_data_file,
         invoice_month=args.invoice_month,
         upload_to_s3=args.upload_to_s3,
-        sql_dump_file=args.sql_dump_file,
+        sql_dump_file=dump_file,
     )
 
 
