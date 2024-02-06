@@ -1,5 +1,6 @@
 from decimal import Decimal
 from datetime import datetime
+from datetime import timedelta
 import argparse
 import logging
 
@@ -10,7 +11,21 @@ logger = logging.getLogger(__name__)
 
 
 def parse_time_argument(arg):
-    return datetime.strptime(arg, '%Y-%m-%d')
+    if isinstance(arg, str):
+        return datetime.strptime(arg, '%Y-%m-%d')
+    return arg
+
+
+def default_start_argument():
+    d = (datetime.today() - timedelta(days=1)).replace(day=1)
+    d = d.replace(hour=0, minute=0, second=0, microsecond=0)
+    return d
+
+
+def default_end_argument():
+    d = datetime.today()
+    d = d.replace(hour=0, minute=0, second=0, microsecond=0)
+    return d
 
 
 def main():
@@ -21,20 +36,24 @@ def main():
 
     parser.add_argument(
         "--start",
-        required=True,
+        default=default_start_argument(),
         type=parse_time_argument,
-        help="Start of the invoicing period. (YYYY-MM-DD)"
+        help=("Start of the invoicing period. (YYYY-MM-DD)."
+              " Defaults to start of last month if 1st of a month,"
+              " or start of this month otherwise.")
     )
     parser.add_argument(
         "--end",
-        required=True,
-        help="End of the invoicing period. (YYYY-MM-DD)",
-        type=parse_time_argument
+        default=default_end_argument(),
+        type=parse_time_argument,
+        help=("End of the invoicing period. (YYYY-MM-DD)."
+              " Not inclusive. Defaults to today.")
     )
     parser.add_argument(
         "--invoice-month",
-        default=None,
-        help="Use the first column for Invoice Month, rather than Interval."
+        default=default_start_argument().strftime('%Y-%m'),
+        help=("Use the first column for Invoice Month, rather than Interval."
+              " Defaults to month of start. (YYYY-MM).")
     )
     parser.add_argument(
         "--coldfront-data-file",
@@ -124,12 +143,16 @@ def main():
               " S3_OUTPUT_ENDPOINT_URL environment variables.")
     )
     parser.add_argument(
-        "output",
+        "--output-file",
         default="/tmp/openstack_invoices.csv",
         help="Output path for invoice in CSV format."
     )
 
     args = parser.parse_args()
+
+    logger.info(f"Processing invoices for month {args.invoice_month}.")
+    logger.info(f"Interval for processing {args.start} - {args.end}.")
+    logger.info(f"Invoice file will be saved to {args.output_file}.")
 
     dump_file = args.sql_dump_file
 
@@ -162,7 +185,7 @@ def main():
     billing.generate_billing(
         args.start,
         args.end,
-        args.output,
+        args.output_file,
         rates,
         coldfront_data_file=coldfront_data_file,
         invoice_month=args.invoice_month,
