@@ -1,6 +1,5 @@
 #!/usr/bin/env sh
 
-cd app/
 python -m openstack_billing_db.main \
     --upload-to-s3 True \
     --download-coldfront-data True \
