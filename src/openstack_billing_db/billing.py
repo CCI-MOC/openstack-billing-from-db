@@ -75,7 +75,7 @@ def collect_invoice_data_from_openstack(database, billing_start, billing_end, ra
     invoices = []
     for project in database.projects:
         invoice = ProjectInvoice(
-            project_name="",
+            project_name=project.uuid,
             project_id=project.uuid,
             pi="",
             institution="",
@@ -142,6 +142,8 @@ def merge_coldfront_data(invoices, coldfront_data_file):
         try:
             a = by_project_id[invoice.project_id]
             invoice.project_name = a["attributes"]["Allocated Project Name"]
+            invoice.institution_specific_code = a["attributes"].get(
+                "Institution-Specific Code", "N/A")
             invoice.pi = a["project"]["pi"]
         except KeyError:
             continue
