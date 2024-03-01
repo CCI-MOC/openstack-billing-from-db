@@ -10,7 +10,7 @@ spec:
         spec:
           containers:
           - name: invoicing-openstack-biweekly
-            image: ghcr.io/cci-moc/openshift-billing-from-db:latest
+            image: ghcr.io/cci-moc/openstack-billing-from-db:latest
             envFrom:
               - secretRef:
                   name: invoicing-openstack-credentials
