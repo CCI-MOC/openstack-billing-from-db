@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 
 python -m openstack_billing_db.main \
+    --include-stopped-runtime True \
     --upload-to-s3 True \
     --download-coldfront-data True \
     --download-sql-dump-from-s3 True \
