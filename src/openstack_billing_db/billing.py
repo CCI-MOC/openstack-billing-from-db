@@ -15,6 +15,7 @@ import boto3
 class Rates(object):
     cpu: Decimal
     gpu_a100: Decimal
+    gpu_a100sxm4: Decimal
     gpu_v100: Decimal
     gpu_a2: Decimal
     gpu_k80: Decimal
@@ -23,6 +24,7 @@ class Rates(object):
 
     cpu_su_name: str = "OpenStack CPU"
     gpu_a100_su_name: str = "OpenStack GPUA100"
+    gpu_a100sxm4_su_name: str = "OpenStack GPUA100SXM4"
     gpu_v100_su_name: str = "OpenStack GPUV100"
     gpu_a2_su_name: str = "OpenStack GPUA2"
     gpu_k80_su_name: str = "OpenStack GPUK80"
@@ -43,6 +45,7 @@ class ProjectInvoice(object):
     rates: Rates
 
     cpu_su_hours: int = 0
+    gpu_a100sxm4_su_hours: int = 0
     gpu_a100_su_hours: int = 0
     gpu_v100_su_hours: int = 0
     gpu_k80_su_hours: int = 0
@@ -99,6 +102,8 @@ def collect_invoice_data_from_openstack(database, billing_start, billing_end, ra
 
                 if i.service_unit_type == "CPU":
                     invoice.cpu_su_hours += su_hours
+                elif i.service_unit_type == "GPU A100SXM4":
+                    invoice.gpu_a100sxm4_su_hours += su_hours
                 elif i.service_unit_type == "GPU A100":
                     invoice.gpu_a100_su_hours += su_hours
                 elif i.service_unit_type == "GPU V100":
@@ -173,7 +178,9 @@ def write(invoices, output, invoice_month=None):
         )
 
         for invoice in invoices:
-            for invoice_type in ['cpu', 'gpu_a100', 'gpu_v100', 'gpu_k80', 'gpu_a2']:
+            for invoice_type in [
+                'cpu', 'gpu_a100sxm4', 'gpu_a100', 'gpu_v100', 'gpu_k80', 'gpu_a2'
+            ]:
                 # Each project gets two rows, one for CPU and one for GPU
                 hours = invoice.__getattribute__(f"{invoice_type}_su_hours")
                 rate = invoice.rates.__getattribute__(invoice_type)

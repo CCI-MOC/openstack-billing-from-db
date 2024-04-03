@@ -7,6 +7,7 @@ python -m openstack_billing_db.main \
     --download-sql-dump-from-s3 True \
     --convert-sql-dump-file-to-sqlite True \
     --rate-cpu-su 0.013 \
+    --rate-gpu-a100sxm4-su 2.078 \
     --rate-gpu-a100-su 1.803 \
     --rate-gpu-v100-su 1.214 \
     --rate-gpu-k80-su 0.463 \
