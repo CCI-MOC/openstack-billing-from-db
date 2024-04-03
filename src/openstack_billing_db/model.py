@@ -39,7 +39,9 @@ class Flavor(object):
     def service_unit_type(self):
         if "gpu" not in self.name:
             return "CPU"
-        elif "a100" in self.name:
+        elif "a100-sxm4" in self.name:
+            return "GPU A100SXM4"
+        elif "a100" in self.name and "sxm4" not in self.name:
             return "GPU A100"
         elif "v100" in self.name:
             return "GPU V100"

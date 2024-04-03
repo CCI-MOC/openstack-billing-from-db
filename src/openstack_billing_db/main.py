@@ -102,6 +102,12 @@ def main():
         help="Rate of CPU SU/hr"
     )
     parser.add_argument(
+        "--rate-gpu-a100sxm4-su",
+        default=0,
+        type=Decimal,
+        help="Rate of GPU A100SXM4 SU/hr"
+    )
+    parser.add_argument(
         "--rate-gpu-a100-su",
         default=0,
         type=Decimal,
@@ -175,6 +181,7 @@ def main():
 
     rates = billing.Rates(
         cpu=args.rate_cpu_su,
+        gpu_a100sxm4=args.rate_gpu_a100sxm4_su,
         gpu_a100=args.rate_gpu_a100_su,
         gpu_v100=args.rate_gpu_v100_su,
         gpu_k80=args.rate_gpu_k80_su,
