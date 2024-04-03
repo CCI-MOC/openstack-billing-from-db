@@ -1,4 +1,5 @@
 import csv
+import logging
 from datetime import datetime
 from dataclasses import dataclass
 from decimal import Decimal
@@ -9,6 +10,8 @@ import os
 from openstack_billing_db import model
 
 import boto3
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass()
@@ -214,7 +217,8 @@ def generate_billing(start, end, output, rates,
                      coldfront_data_file=None,
                      invoice_month=None,
                      upload_to_s3=False,
-                     sql_dump_file=None):
+                     sql_dump_file=None,
+                     upload_to_primary_location=True):
 
     database = model.Database(start, sql_dump_file)
 
@@ -243,11 +247,13 @@ def generate_billing(start, end, output, rates,
             aws_secret_access_key=s3_secret,
         )
 
-        primary_location = (
-            f"Invoices/{invoice_month}/"
-            f"Service Invoices/NERC OpenStack {invoice_month}.csv"
-        )
-        s3.upload_file(output, Bucket=s3_bucket, Key=primary_location)
+        if upload_to_primary_location:
+            primary_location = (
+                f"Invoices/{invoice_month}/"
+                f"Service Invoices/NERC OpenStack {invoice_month}.csv"
+            )
+            s3.upload_file(output, Bucket=s3_bucket, Key=primary_location)
+            logger.info(f"Uploaded to {primary_location}.")
 
         timestamp = datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
         secondary_location = (
@@ -255,3 +261,4 @@ def generate_billing(start, end, output, rates,
             f"Archive/NERC OpenStack {invoice_month} {timestamp}.csv"
         )
         s3.upload_file(output, Bucket=s3_bucket, Key=secondary_location)
+        logger.info(f"Uploaded to {secondary_location}.")
