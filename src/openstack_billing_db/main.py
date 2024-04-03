@@ -149,6 +149,13 @@ def main():
               " S3_OUTPUT_ENDPOINT_URL environment variables.")
     )
     parser.add_argument(
+        "--upload-to-primary-location",
+        default=True,
+        type=bool,
+        help=("When uploading to S3, upload both to primary and"
+              " archive location, or just archive location.")
+    )
+    parser.add_argument(
         "--output-file",
         default="/tmp/openstack_invoices.csv",
         help="Output path for invoice in CSV format."
@@ -198,6 +205,7 @@ def main():
         invoice_month=args.invoice_month,
         upload_to_s3=args.upload_to_s3,
         sql_dump_file=dump_file,
+        upload_to_primary_location=args.upload_to_primary_location,
     )
 
 
