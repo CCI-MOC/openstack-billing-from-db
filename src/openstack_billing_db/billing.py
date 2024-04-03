@@ -58,6 +58,10 @@ class ProjectInvoice(object):
         return self.rates.cpu * self.cpu_su_hours
 
     @property
+    def gpu_a100sxm4_su_cost(self):
+        return self.rates.gpu_a100sxm4 * self.gpu_a100sxm4_su_hours
+
+    @property
     def gpu_a100_su_cost(self):
         return self.rates.gpu_a100 * self.gpu_a100_su_hours
 
