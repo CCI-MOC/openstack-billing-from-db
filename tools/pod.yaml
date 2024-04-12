@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: invoicing-openstack-manual
+  namespace: invoicing-openstack
+spec:
+  containers:
+  - name: invoicing-openstack-manual
+    image: ghcr.io/cci-moc/openstack-billing-from-db:latest
+    envFrom:
+      - secretRef:
+          name: invoicing-openstack-credentials
+    command: [ "sh", "-c" ]
+    args:
+      - |
+        python -m openstack_billing_db.main \
+            --start 2024-03-01 \
+            --end 2024-04-01 \
+            --invoice-month 2024-03 \
+            --include-stopped-runtime True \
+            --upload-to-s3 True \
+            --download-coldfront-data True \
+            --download-sql-dump-from-s3 True \
+            --convert-sql-dump-file-to-sqlite True \
+            --rate-cpu-su 0.013 \
+            --rate-gpu-a100sxm4-su 2.078 \
+            --rate-gpu-a100-su 1.803 \
+            --rate-gpu-v100-su 1.214 \
+            --rate-gpu-k80-su 0.463 \
+            --rate-gpu-a2-su 0.463
+    imagePullPolicy: Always
