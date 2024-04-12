@@ -41,15 +41,18 @@ def download_latest_dump_from_s3() -> str:
     }
 
     """
-    s3_endpoint = os.getenv("S3_INPUT_ENDPOINT_URL",
-                            "https://holecs.rc.fas.harvard.edu")
+    s3_endpoint = os.getenv(
+        "S3_INPUT_ENDPOINT_URL", "https://holecs.rc.fas.harvard.edu"
+    )
     s3_bucket = os.getenv("S3_INPUT_BUCKET", "nerc-osp-backups")
     s3_key_id = os.getenv("S3_INPUT_ACCESS_KEY_ID")
     s3_secret = os.getenv("S3_INPUT_SECRET_ACCESS_KEY")
 
     if not s3_key_id or not s3_secret:
-        raise Exception("Must provide S3_INPUT_ACCESS_KEY_ID and"
-                        " S3_INPUT_SECRET_ACCESS_KEY environment variables.")
+        raise Exception(
+            "Must provide S3_INPUT_ACCESS_KEY_ID and"
+            " S3_INPUT_SECRET_ACCESS_KEY environment variables."
+        )
 
     s3 = boto3.client(
         "s3",
@@ -58,9 +61,8 @@ def download_latest_dump_from_s3() -> str:
         aws_secret_access_key=s3_secret,
     )
 
-    today = datetime.today().strftime('%Y%m%d')
-    dumps = s3.list_objects_v2(Bucket=s3_bucket,
-                               Prefix=f"dbs/nerc-ctl-0/nova-{today}")
+    today = datetime.today().strftime("%Y%m%d")
+    dumps = s3.list_objects_v2(Bucket=s3_bucket, Prefix=f"dbs/nerc-ctl-0/nova-{today}")
 
     if len(dumps["Contents"]) == 0:
         raise Exception(f"No database dumps found for {today}")
@@ -109,8 +111,10 @@ def convert_mysqldump_to_sqlite(path_to_dump) -> str:
         command = subprocess.run(["mysql2sqlite", path_to_dump], stdout=f)
 
     if command.returncode != 0:
-        raise Exception(f"Error converting {path_to_dump} to SQLite compatible"
-                        f" at {destination_path}.")
+        raise Exception(
+            f"Error converting {path_to_dump} to SQLite compatible"
+            f" at {destination_path}."
+        )
 
     logger.info(f"Converted at {destination_path}.")
     return destination_path
@@ -120,15 +124,19 @@ def get_keycloak_session():
     """Authenticate as a client with Keycloak to receive an access token."""
     keycloak_token_url = os.getenv(
         "KEYCLOAK_TOKEN_URL",
-        ("https://keycloak.mss.mghpcc.org/auth/realms/mss"
-         "/protocol/openid-connect/token")
+        (
+            "https://keycloak.mss.mghpcc.org/auth/realms/mss"
+            "/protocol/openid-connect/token"
+        ),
     )
     keycloak_client_id = os.getenv("KEYCLOAK_CLIENT_ID")
     keycloak_client_secret = os.getenv("KEYCLOAK_CLIENT_SECRET")
 
     if not keycloak_client_id or not keycloak_client_secret:
-        raise Exception("Must provide KEYCLOAK_CLIENT_ID and"
-                        " KEYCLOAK_CLIENT_SECRET environment variables.")
+        raise Exception(
+            "Must provide KEYCLOAK_CLIENT_ID and"
+            " KEYCLOAK_CLIENT_SECRET environment variables."
+        )
 
     r = requests.post(
         keycloak_token_url,
@@ -145,14 +153,14 @@ def get_keycloak_session():
     session.headers.update(headers)
     return session
 
+
 def download_coldfront_data(download_location=None) -> str:
     """Downloads allocation data from the ColdFront API.
 
     Returns location of downloaded JSON file.
     """
 
-    colfront_url = os.getenv("COLDFRONT_URL",
-                             "https://coldfront.mss.mghpcc.org")
+    colfront_url = os.getenv("COLDFRONT_URL", "https://coldfront.mss.mghpcc.org")
     allocations_url = f"{colfront_url}/api/allocations?all=true"
 
     logger.info(f"Making request to ColdFront at {allocations_url}")

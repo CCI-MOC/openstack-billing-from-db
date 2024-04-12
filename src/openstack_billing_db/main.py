@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 def parse_time_argument(arg):
     if isinstance(arg, str):
-        return datetime.strptime(arg, '%Y-%m-%d')
+        return datetime.strptime(arg, "%Y-%m-%d")
     return arg
 
 
@@ -38,127 +38,132 @@ def main():
         "--start",
         default=default_start_argument(),
         type=parse_time_argument,
-        help=("Start of the invoicing period. (YYYY-MM-DD)."
-              " Defaults to start of last month if 1st of a month,"
-              " or start of this month otherwise.")
+        help=(
+            "Start of the invoicing period. (YYYY-MM-DD)."
+            " Defaults to start of last month if 1st of a month,"
+            " or start of this month otherwise."
+        ),
     )
     parser.add_argument(
         "--end",
         default=default_end_argument(),
         type=parse_time_argument,
-        help=("End of the invoicing period. (YYYY-MM-DD)."
-              " Not inclusive. Defaults to today.")
+        help=(
+            "End of the invoicing period. (YYYY-MM-DD)."
+            " Not inclusive. Defaults to today."
+        ),
     )
     parser.add_argument(
         "--invoice-month",
-        default=default_start_argument().strftime('%Y-%m'),
-        help=("Use the first column for Invoice Month, rather than Interval."
-              " Defaults to month of start. (YYYY-MM).")
+        default=default_start_argument().strftime("%Y-%m"),
+        help=(
+            "Use the first column for Invoice Month, rather than Interval."
+            " Defaults to month of start. (YYYY-MM)."
+        ),
     )
     parser.add_argument(
         "--coldfront-data-file",
         default=None,
-        help=("Path to JSON Output of ColdFront's /api/allocations."
-              "Used for populating project names and PIs. If"
-              " --download-coldfront-data option is applied, this"
-              " location will be used to save the downloaded output.")
+        help=(
+            "Path to JSON Output of ColdFront's /api/allocations."
+            "Used for populating project names and PIs. If"
+            " --download-coldfront-data option is applied, this"
+            " location will be used to save the downloaded output."
+        ),
     )
     parser.add_argument(
         "--download-coldfront-data",
         default=False,
-        help=("Download ColdFront data from ColdFront. Requires the environment"
-              " variables KEYCLOAK_CLIENT_ID and KEYCLOAK_CLIENT_SECRET."
-              " Default to NERC Keycloak and ColdFront but can be"
-              " configure using KEYCLOAK_TOKEN_URL and COLDFRONT_URL environment"
-              " variables.")
+        help=(
+            "Download ColdFront data from ColdFront. Requires the environment"
+            " variables KEYCLOAK_CLIENT_ID and KEYCLOAK_CLIENT_SECRET."
+            " Default to NERC Keycloak and ColdFront but can be"
+            " configure using KEYCLOAK_TOKEN_URL and COLDFRONT_URL environment"
+            " variables."
+        ),
     )
     parser.add_argument(
         "--sql-dump-file",
         default="",
-        help=("Path to SQL Dump of Nova DB. Must have been converted to SQLite3"
-              "compatible format using https://github.com/dumblob/mysql2sqlite.")
+        help=(
+            "Path to SQL Dump of Nova DB. Must have been converted to SQLite3"
+            "compatible format using https://github.com/dumblob/mysql2sqlite."
+        ),
     )
     parser.add_argument(
         "--convert-sql-dump-file-to-sqlite",
         default=True,
-        help=("Automatically convert SQL dump to SQlite3 compatible format using"
-              " https://github.com/dumblob/mysql2sqlite.")
+        help=(
+            "Automatically convert SQL dump to SQlite3 compatible format using"
+            " https://github.com/dumblob/mysql2sqlite."
+        ),
     )
     parser.add_argument(
         "--download-sql-dump-from-s3",
         default=False,
-        help=("Downloads Nova DB Dump from S3."
-              " Must provide S3_INPUT_ACCESS_KEY_ID and"
-              " S3_INPUT_SECRET_ACCESS_KEY environment variables."
-              " Defaults to Backblaze and to nerc-invoicing bucket"
-              " but can be configured through S3_INPUT_BUCKET and"
-              " S3_OUTPUT_ENDPOINT_URL environment variables."
-              " Automatically decompresses the file if gzipped.")
+        help=(
+            "Downloads Nova DB Dump from S3."
+            " Must provide S3_INPUT_ACCESS_KEY_ID and"
+            " S3_INPUT_SECRET_ACCESS_KEY environment variables."
+            " Defaults to Backblaze and to nerc-invoicing bucket"
+            " but can be configured through S3_INPUT_BUCKET and"
+            " S3_OUTPUT_ENDPOINT_URL environment variables."
+            " Automatically decompresses the file if gzipped."
+        ),
     )
     parser.add_argument(
-        "--rate-cpu-su",
-        default=0,
-        type=Decimal,
-        help="Rate of CPU SU/hr"
+        "--rate-cpu-su", default=0, type=Decimal, help="Rate of CPU SU/hr"
     )
     parser.add_argument(
         "--rate-gpu-a100sxm4-su",
         default=0,
         type=Decimal,
-        help="Rate of GPU A100SXM4 SU/hr"
+        help="Rate of GPU A100SXM4 SU/hr",
     )
     parser.add_argument(
-        "--rate-gpu-a100-su",
-        default=0,
-        type=Decimal,
-        help="Rate of GPU A100 SU/hr"
+        "--rate-gpu-a100-su", default=0, type=Decimal, help="Rate of GPU A100 SU/hr"
     )
     parser.add_argument(
-        "--rate-gpu-v100-su",
-        default=0,
-        type=Decimal,
-        help="Rate of GPU V100 SU/hr"
+        "--rate-gpu-v100-su", default=0, type=Decimal, help="Rate of GPU V100 SU/hr"
     )
     parser.add_argument(
-        "--rate-gpu-k80-su",
-        default=0,
-        type=Decimal,
-        help="Rate of GPU K80 SU/hr"
+        "--rate-gpu-k80-su", default=0, type=Decimal, help="Rate of GPU K80 SU/hr"
     )
     parser.add_argument(
-        "--rate-gpu-a2-su",
-        default=0,
-        type=Decimal,
-        help="Rate of GPU A2 SU/hr"
+        "--rate-gpu-a2-su", default=0, type=Decimal, help="Rate of GPU A2 SU/hr"
     )
     parser.add_argument(
         "--include-stopped-runtime",
         default=False,
         type=bool,
-        help="Include stopped runtime for instances."
+        help="Include stopped runtime for instances.",
     )
     parser.add_argument(
         "--upload-to-s3",
         default=False,
         type=bool,
-        help=("Uploads the CSV result to S3 compatible storage."
-              " Must provide S3_OUTPUT_ACCESS_KEY_ID and"
-              " S3_OUTPUT_SECRET_ACCESS_KEY environment variables."
-              " Defaults to Backblaze and to nerc-invoicing bucket"
-              " but can be configured through S3_OUTPUT_BUCKET and"
-              " S3_OUTPUT_ENDPOINT_URL environment variables.")
+        help=(
+            "Uploads the CSV result to S3 compatible storage."
+            " Must provide S3_OUTPUT_ACCESS_KEY_ID and"
+            " S3_OUTPUT_SECRET_ACCESS_KEY environment variables."
+            " Defaults to Backblaze and to nerc-invoicing bucket"
+            " but can be configured through S3_OUTPUT_BUCKET and"
+            " S3_OUTPUT_ENDPOINT_URL environment variables."
+        ),
     )
     parser.add_argument(
         "--upload-to-primary-location",
         default=True,
         type=bool,
-        help=("When uploading to S3, upload both to primary and"
-              " archive location, or just archive location.")
+        help=(
+            "When uploading to S3, upload both to primary and"
+            " archive location, or just archive location."
+        ),
     )
     parser.add_argument(
         "--output-file",
         default="/tmp/openstack_invoices.csv",
-        help="Output path for invoice in CSV format."
+        help="Output path for invoice in CSV format.",
     )
 
     args = parser.parse_args()
@@ -176,8 +181,9 @@ def main():
         dump_file = fetch.convert_mysqldump_to_sqlite(dump_file)
 
     if not dump_file:
-        raise Exception("Must provide either --sql_dump_file"
-                        "or --download_dump_from_s3.")
+        raise Exception(
+            "Must provide either --sql_dump_file" "or --download_dump_from_s3."
+        )
 
     coldfront_data_file = args.coldfront_data_file
     if args.download_coldfront_data:
