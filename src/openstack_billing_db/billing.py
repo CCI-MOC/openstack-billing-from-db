@@ -91,7 +91,7 @@ def collect_invoice_data_from_openstack(database, billing_start, billing_end, ra
             institution="",
             instances=project.instances,
             invoice_interval=f"{billing_start.date()} - {billing_end.date()}",
-            rates=rates
+            rates=rates,
         )
 
         for i in project.instances:  # type: model.Instance
@@ -126,8 +126,8 @@ def collect_invoice_data_from_openstack(database, billing_start, billing_end, ra
     return invoices
 
 
-def load_flavors_cache(flavors_cache_file) -> dict[int: model.Flavor]:
-    with open(flavors_cache_file, 'r') as f:
+def load_flavors_cache(flavors_cache_file) -> dict[int : model.Flavor]:
+    with open(flavors_cache_file, "r") as f:
         cache = json.load(f)
 
     flavors = []
@@ -138,12 +138,12 @@ def load_flavors_cache(flavors_cache_file) -> dict[int: model.Flavor]:
 
 
 def write_flavors_cache(flavors_cache_file, flavors):
-    with open(flavors_cache_file, 'w') as f:
+    with open(flavors_cache_file, "w") as f:
         f.write(json.dumps(flavors, indent=4))
 
 
 def merge_coldfront_data(invoices, coldfront_data_file):
-    with open(coldfront_data_file, 'r') as f:
+    with open(coldfront_data_file, "r") as f:
         allocations = json.load(f)
 
     by_project_id = {
@@ -155,16 +155,17 @@ def merge_coldfront_data(invoices, coldfront_data_file):
             a = by_project_id[invoice.project_id]
             invoice.project_name = a["attributes"]["Allocated Project Name"]
             invoice.institution_specific_code = a["attributes"].get(
-                "Institution-Specific Code", "N/A")
+                "Institution-Specific Code", "N/A"
+            )
             invoice.pi = a["project"]["pi"]
         except KeyError:
             continue
 
 
 def write(invoices, output, invoice_month=None):
-    with open(output, 'w', newline='') as f:
+    with open(output, "w", newline="") as f:
         csv_invoice_writer = csv.writer(
-            f, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL
+            f, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL
         )
         # Write Headers
         csv_invoice_writer.writerow(
@@ -186,7 +187,12 @@ def write(invoices, output, invoice_month=None):
 
         for invoice in invoices:
             for invoice_type in [
-                'cpu', 'gpu_a100sxm4', 'gpu_a100', 'gpu_v100', 'gpu_k80', 'gpu_a2'
+                "cpu",
+                "gpu_a100sxm4",
+                "gpu_a100",
+                "gpu_v100",
+                "gpu_k80",
+                "gpu_a2",
             ]:
                 # Each project gets two rows, one for CPU and one for GPU
                 hours = invoice.__getattribute__(f"{invoice_type}_su_hours")
@@ -194,10 +200,13 @@ def write(invoices, output, invoice_month=None):
                 su_name = invoice.rates.__getattribute__(f"{invoice_type}_su_name")
                 cost = invoice.__getattribute__(f"{invoice_type}_su_cost")
                 if hours > 0:
-
                     csv_invoice_writer.writerow(
                         [
-                            invoice_month if invoice_month else invoice.invoice_interval,
+                            (
+                                invoice_month
+                                if invoice_month
+                                else invoice.invoice_interval
+                            ),
                             invoice.project_name,
                             invoice.project_id,
                             invoice.pi,
@@ -213,13 +222,17 @@ def write(invoices, output, invoice_month=None):
                     )
 
 
-def generate_billing(start, end, output, rates,
-                     coldfront_data_file=None,
-                     invoice_month=None,
-                     upload_to_s3=False,
-                     sql_dump_file=None,
-                     upload_to_primary_location=True):
-
+def generate_billing(
+    start,
+    end,
+    output,
+    rates,
+    coldfront_data_file=None,
+    invoice_month=None,
+    upload_to_s3=False,
+    sql_dump_file=None,
+    upload_to_primary_location=True,
+):
     database = model.Database(start, sql_dump_file)
 
     invoices = collect_invoice_data_from_openstack(database, start, end, rates)
@@ -228,15 +241,18 @@ def generate_billing(start, end, output, rates,
     write(invoices, output, invoice_month)
 
     if upload_to_s3:
-        s3_endpoint = os.getenv("S3_OUTPUT_ENDPOINT_URL",
-                                "https://s3.us-east-005.backblazeb2.com")
+        s3_endpoint = os.getenv(
+            "S3_OUTPUT_ENDPOINT_URL", "https://s3.us-east-005.backblazeb2.com"
+        )
         s3_bucket = os.getenv("S3_OUTPUT_BUCKET", "nerc-invoicing")
         s3_key_id = os.getenv("S3_OUTPUT_ACCESS_KEY_ID")
         s3_secret = os.getenv("S3_OUTPUT_SECRET_ACCESS_KEY")
 
         if not s3_key_id or not s3_secret:
-            raise Exception("Must provide S3_OUTPUT_ACCESS_KEY_ID and"
-                            " S3_OUTPUT_SECRET_ACCESS_KEY environment variables.")
+            raise Exception(
+                "Must provide S3_OUTPUT_ACCESS_KEY_ID and"
+                " S3_OUTPUT_SECRET_ACCESS_KEY environment variables."
+            )
         if not invoice_month:
             raise Exception("No invoice month specified. Required for S3 upload.")
 
@@ -255,7 +271,7 @@ def generate_billing(start, end, output, rates,
             s3.upload_file(output, Bucket=s3_bucket, Key=primary_location)
             logger.info(f"Uploaded to {primary_location}.")
 
-        timestamp = datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
+        timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
         secondary_location = (
             f"Invoices/{invoice_month}/"
             f"Archive/NERC OpenStack {invoice_month} {timestamp}.csv"

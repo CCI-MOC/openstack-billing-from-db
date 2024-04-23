@@ -1,12 +1,10 @@
 import json
-from abc import ABC, abstractmethod
-import math
+from abc import abstractmethod
 import datetime
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 import sqlite3
 from typing import Optional
-
 
 
 @dataclass_json()
@@ -22,10 +20,12 @@ class Flavor(object):
     def service_units(self):
         if "gpu" not in self.name:
             # 1 CPU SU = 0 GPU, 1 CPU, 4 GB RAM, 20 GB
-            return int(max(
-                self.vcpus,
-                self.memory / 4096,
-            ))
+            return int(
+                max(
+                    self.vcpus,
+                    self.memory / 4096,
+                )
+            )
         else:
             # The flavor for 2 SUs of V100 is inconsistent with previous
             # naming scheme.
@@ -116,7 +116,8 @@ class Instance(object):
                 # Count stopped time from last known stop.
                 if last_stop:
                     runtime.total_seconds_stopped += (
-                            last_start - last_stop).total_seconds()
+                        last_start - last_stop
+                    ).total_seconds()
                     last_stop = None
 
             # Some deleted instances do not have a delete event, they do
@@ -130,7 +131,8 @@ class Instance(object):
                 # Count running time from last known start.
                 if last_start:
                     runtime.total_seconds_running += (
-                            last_stop - last_start).total_seconds()
+                        last_stop - last_start
+                    ).total_seconds()
                     last_start = None
 
             if event.name == "delete":
@@ -175,11 +177,10 @@ class BaseDatabase(object):
 
 
 class Database(BaseDatabase):
-
     def __init__(self, start, sql_dump_location: str):
         self.db_nova = sqlite3.connect(":memory:")
         self.db_nova.row_factory = sqlite3.Row
-        with open(sql_dump_location, 'r') as sql:
+        with open(sql_dump_location, "r") as sql:
             self.db_nova.executescript(sql.read())
         self.start = start
 
@@ -196,21 +197,21 @@ class Database(BaseDatabase):
         cursor = self.db_nova.cursor()
         cursor.execute(
             f"select created_at, action, message from instance_actions where"
-            f" instance_uuid = \"{instance_uuid}\" order by created_at"
+            f' instance_uuid = "{instance_uuid}" order by created_at'
         )
         return [
             InstanceEvent(
-                time=event["created_at"],
-                name=event["action"],
-                message=event["message"]
-            ) for event in cursor.fetchall()
+                time=event["created_at"], name=event["action"], message=event["message"]
+            )
+            for event in cursor.fetchall()
         ]
 
     def get_instances(self, project) -> list[Instance]:
         instances = []
 
         cursor = self.db_nova.cursor()
-        cursor.execute(f"""
+        cursor.execute(
+            f"""
             select
                 instances.uuid,
                 hostname,
@@ -225,7 +226,8 @@ class Database(BaseDatabase):
                 instances.project_id = "{project}"
                 and (instances.deleted_at > "{self.start.isoformat()}"
                     or instances.deleted = 0)
-        """)
+        """
+        )
 
         for instance in cursor.fetchall():
             pci_info = json.loads(instance["pci_requests"])
@@ -254,7 +256,7 @@ class Database(BaseDatabase):
                 if pci_name not in ["a100", "a100-sxm4", "v100", "k80"]:
                     raise Exception(f"Invalid pci_name {pci_name}.")
 
-                count = pci_info[0]['count']
+                count = pci_info[0]["count"]
                 su_name = f"gpu-{pci_name}.{count}"
 
             flavor = Flavor(
@@ -279,8 +281,6 @@ class Database(BaseDatabase):
         cursor = self.db_nova.cursor()
         cursor.execute("select distinct project_id from instances")
         return [
-            Project(
-                uuid=project[0],
-                instances=self.get_instances(project[0])
-            ) for project in cursor.fetchall()
+            Project(uuid=project[0], instances=self.get_instances(project[0]))
+            for project in cursor.fetchall()
         ]
