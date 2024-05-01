@@ -3,8 +3,11 @@ from abc import abstractmethod
 import datetime
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
+import logging
 import sqlite3
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass_json()
@@ -230,7 +233,13 @@ class Database(BaseDatabase):
         )
 
         for instance in cursor.fetchall():
-            pci_info = json.loads(instance["pci_requests"])
+            try:
+                pci_info = json.loads(instance["pci_requests"])
+            except TypeError:
+                pci_info = None
+                logger.warning(
+                    f"Could not parse pci requests from instance {instance}."
+                )
             su_name = "cpu"
             if pci_info:
                 # The PCI Requests column of the database contains a JSON
