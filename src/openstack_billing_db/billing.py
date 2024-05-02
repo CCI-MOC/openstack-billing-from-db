@@ -2,7 +2,7 @@ import csv
 import logging
 from datetime import datetime
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 import json
 import math
 import os
@@ -57,27 +57,27 @@ class ProjectInvoice(object):
     institution_specific_code: str = "N/A"
 
     @property
-    def cpu_su_cost(self):
+    def cpu_su_cost(self) -> Decimal:
         return self.rates.cpu * self.cpu_su_hours
 
     @property
-    def gpu_a100sxm4_su_cost(self):
+    def gpu_a100sxm4_su_cost(self) -> Decimal:
         return self.rates.gpu_a100sxm4 * self.gpu_a100sxm4_su_hours
 
     @property
-    def gpu_a100_su_cost(self):
+    def gpu_a100_su_cost(self) -> Decimal:
         return self.rates.gpu_a100 * self.gpu_a100_su_hours
 
     @property
-    def gpu_v100_su_cost(self):
+    def gpu_v100_su_cost(self) -> Decimal:
         return self.rates.gpu_v100 * self.gpu_v100_su_hours
 
     @property
-    def gpu_k80_su_cost(self):
+    def gpu_k80_su_cost(self) -> Decimal:
         return self.rates.gpu_k80 * self.gpu_k80_su_hours
 
     @property
-    def gpu_a2_su_cost(self):
+    def gpu_a2_su_cost(self) -> Decimal:
         return self.rates.gpu_a2 * self.gpu_a2_su_hours
 
 
@@ -199,6 +199,8 @@ def write(invoices, output, invoice_month=None):
                 rate = invoice.rates.__getattribute__(invoice_type)
                 su_name = invoice.rates.__getattribute__(f"{invoice_type}_su_name")
                 cost = invoice.__getattribute__(f"{invoice_type}_su_cost")
+                cost = cost.quantize(Decimal(".01"), rounding=ROUND_HALF_UP)
+
                 if hours > 0:
                     csv_invoice_writer.writerow(
                         [
