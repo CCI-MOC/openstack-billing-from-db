@@ -126,22 +126,6 @@ def collect_invoice_data_from_openstack(database, billing_start, billing_end, ra
     return invoices
 
 
-def load_flavors_cache(flavors_cache_file) -> dict[int : model.Flavor]:
-    with open(flavors_cache_file, "r") as f:
-        cache = json.load(f)
-
-    flavors = []
-    for flavor in cache:
-        flavors.append((model.Flavor(**flavor)))
-
-    return flavors
-
-
-def write_flavors_cache(flavors_cache_file, flavors):
-    with open(flavors_cache_file, "w") as f:
-        f.write(json.dumps(flavors, indent=4))
-
-
 def merge_coldfront_data(invoices, coldfront_data_file):
     with open(coldfront_data_file, "r") as f:
         allocations = json.load(f)
