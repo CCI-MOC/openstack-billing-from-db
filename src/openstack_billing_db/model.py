@@ -14,47 +14,21 @@ logger = logging.getLogger(__name__)
 @dataclass()
 class Flavor(object):
     id: int
-    name: str
+    service_unit_type: str
     vcpus: int
     memory: int
     storage: int
+    gpu_count: int = 0
 
     @property
     def service_units(self):
-        if "gpu" not in self.name:
-            # 1 CPU SU = 0 GPU, 1 CPU, 4 GB RAM, 20 GB
-            return int(
-                max(
-                    self.vcpus,
-                    self.memory / 4096,
-                )
+        # 1 CPU SU = 0 GPU, 1 CPU, 4 GB RAM, 20 GB
+        return self.gpu_count or int(
+            max(
+                self.vcpus,
+                self.memory / 4096,
             )
-        else:
-            # The flavor for 2 SUs of V100 is inconsistent with previous
-            # naming scheme.
-            if self.name == "gpu-su-v100.1m":
-                return 2
-
-            split = self.name.split(".")
-            return int(split[-1])
-
-    @property
-    def service_unit_type(self):
-        if "gpu" not in self.name:
-            return "CPU"
-        elif "a100-sxm4" in self.name:
-            return "GPU A100SXM4"
-        elif "a100" in self.name and "sxm4" not in self.name:
-            return "GPU A100"
-        elif "v100" in self.name:
-            return "GPU V100"
-        elif "k80" in self.name:
-            return "GPU K80"
-        elif "gpu-su-a2" in self.name:
-            return "GPU A2"
-        else:
-            # New GPU type that we need to take into account.
-            raise Exception()
+        )
 
 
 @dataclass()
@@ -197,6 +171,20 @@ class Database(BaseDatabase):
 
         return self._projects
 
+    @staticmethod
+    def _get_gpu_flavor_info(pci_info):
+        if len(pci_info) > 1:
+            raise Exception
+
+        pci_name = pci_info[0].get("alias_name", "").lower()
+        if pci_name not in ["a100", "a100-sxm4", "v100", "k80"]:
+            raise Exception(f"Invalid pci_name {pci_name}.")
+
+        count = int(pci_info[0]["count"])
+        su_type = f"gpu_{pci_name}".replace("-", "")
+
+        return (su_type, count)
+
     def get_events(self, instance_uuid) -> list[InstanceEvent]:
         cursor = self.db_nova.cursor()
         cursor.execute(
@@ -241,7 +229,8 @@ class Database(BaseDatabase):
                 logger.warning(
                     f"Could not parse pci requests from instance {instance}."
                 )
-            su_name = "cpu"
+            su_type = "cpu"
+            gpu_count = 0
             if pci_info:
                 # The PCI Requests column of the database contains a JSON
                 # object with the below format. If the instance has an
@@ -259,22 +248,15 @@ class Database(BaseDatabase):
                 #     "requester_id": null
                 #   }
                 # ]
-                if len(pci_info) > 1:
-                    raise Exception
-
-                pci_name = pci_info[0].get("alias_name", "").lower()
-                if pci_name not in ["a100", "a100-sxm4", "v100", "k80"]:
-                    raise Exception(f"Invalid pci_name {pci_name}.")
-
-                count = pci_info[0]["count"]
-                su_name = f"gpu-{pci_name}.{count}"
+                su_type, gpu_count = self._get_gpu_flavor_info(pci_info)
 
             flavor = Flavor(
                 id=instance["instance_type_id"],
-                name=su_name,
+                service_unit_type=su_type,
                 vcpus=instance["vcpus"],
                 memory=instance["memory_mb"],
                 storage=20,
+                gpu_count=gpu_count,
             )
 
             i = Instance(

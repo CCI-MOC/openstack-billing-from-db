@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timedelta
+import pytest
 
 from openstack_billing_db import billing
 from openstack_billing_db.model import Instance, InstanceEvent
@@ -27,3 +28,23 @@ def test_instance_simple_runtime():
     )
     assert r.total_seconds_running == (15 * DAY) - (DAY * 2)
     assert r.total_seconds_stopped == 0
+
+
+def test_billing_add_su_hours():
+    invoice = billing.ProjectInvoice(
+        project_name="foo",
+        project_id="foo",
+        pi="foo",
+        institution="foo",
+        invoice_interval="foo",
+        instances=[],
+        rates=None,
+    )
+    invoice = billing.set_invoice_su_hours(invoice, "cpu", 24)
+    assert invoice.cpu_su_hours == 24
+
+    invoice = billing.set_invoice_su_hours(invoice, "gpu_a100", 48)
+    assert invoice.gpu_a100_su_hours == 48
+
+    with pytest.raises(Exception) as e:
+        invoice = billing.set_invoice_su_hours(invoice, "gpu_fake", 72)
