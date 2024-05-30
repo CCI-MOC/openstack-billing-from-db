@@ -69,6 +69,12 @@ class InstanceRuntime(object):
     total_seconds_running: int = 0
     total_seconds_stopped: int = 0
 
+    def __sub__(self, other):
+        return InstanceRuntime(
+            self.total_seconds_running - other.total_seconds_running,
+            self.total_seconds_stopped - other.total_seconds_stopped,
+        )
+
 
 @dataclass
 class Instance(object):
