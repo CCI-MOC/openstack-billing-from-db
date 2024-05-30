@@ -61,13 +61,19 @@ def download_latest_dump_from_s3() -> str:
         aws_secret_access_key=s3_secret,
     )
 
+    key = None
     today = datetime.today().strftime("%Y%m%d")
-    dumps = s3.list_objects_v2(Bucket=s3_bucket, Prefix=f"dbs/nerc-ctl-0/nova-{today}")
 
-    if len(dumps["Contents"]) == 0:
+    for ctl in ["nerc-ctl-0", "nerc-ctl-1", "nerc-ctl-2"]:
+        dumps = s3.list_objects_v2(Bucket=s3_bucket, Prefix=f"dbs/{ctl}/nova-{today}")
+
+        if "Contents" in dumps:
+            key = dumps["Contents"][0]["Key"]
+            break
+
+    if not key:
         raise Exception(f"No database dumps found for {today}")
 
-    key = dumps["Contents"][0]["Key"]
     filename = os.path.basename(key)
     download_location = f"/tmp/{filename}"
 
