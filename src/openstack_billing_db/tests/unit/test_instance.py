@@ -1,14 +1,8 @@
 import uuid
 from datetime import datetime, timedelta
 
-from openstack_billing_db.model import Instance, InstanceEvent, Flavor
-
-FLAVORS = {1: Flavor(id=1, name="TestFlavor", vcpus=1, memory=4096, storage=10)}
-
-MINUTE = 60
-HOUR = 60 * MINUTE
-DAY = HOUR * 24
-MONTH = 31 * DAY
+from openstack_billing_db.model import Instance, InstanceEvent
+from openstack_billing_db.tests.unit.utils import FLAVORS, MINUTE, HOUR, DAY, MONTH
 
 
 def test_instance_simple_runtime():
@@ -115,7 +109,7 @@ def test_instance_no_delete_action():
 
     r = i.get_runtime_during(
         datetime(year=1999, month=11, day=1, hour=0, minute=0, second=0),
-        datetime(year=2000, month=12, day=1, hour=0, minute=0, second=0),
+        datetime(year=1999, month=12, day=1, hour=0, minute=0, second=0),
     )
     assert r.total_seconds_running == 0
     assert r.total_seconds_stopped == 0

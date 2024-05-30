@@ -88,6 +88,23 @@ class ProjectInvoice(object):
         return self.rates.gpu_a2 * self.gpu_a2_su_hours
 
 
+def get_runtime_for_instance(
+    instance: model.Instance,
+    start: datetime,
+    end: datetime,
+    excluded_intervals: list[(str, str)],
+):
+    runtime = instance.get_runtime_during(start, end)
+    for interval in excluded_intervals:
+        excluded_runtime = instance.get_runtime_during(
+            start_time=utils.parse_time_from_string(interval[0]),
+            end_time=utils.parse_time_from_string(interval[1]),
+        )
+        runtime = runtime - excluded_runtime
+
+    return runtime
+
+
 def collect_invoice_data_from_openstack(
     database, billing_start, billing_end, rates, invoice_month=None
 ):
@@ -103,16 +120,14 @@ def collect_invoice_data_from_openstack(
             rates=rates,
         )
 
+        excluded_intervals = []
+        if invoice_month:
+            excluded_intervals = OUTAGES_FOR_MONTH.get(invoice_month, [])
+
         for i in project.instances:  # type: model.Instance
-            runtime = i.get_runtime_during(billing_start, billing_end)
-
-            if invoice_month and invoice_month in OUTAGES_FOR_MONTH:
-                for interval in OUTAGES_FOR_MONTH[invoice_month]:
-                    runtime -= i.get_runtime_during(
-                        start_time=utils.parse_time_from_string(interval[0]),
-                        end_time=utils.parse_time_from_string(interval[1]),
-                    )
-
+            runtime = get_runtime_for_instance(
+                i, billing_start, billing_end, excluded_intervals
+            )
             runtime_seconds = runtime.total_seconds_running
             if rates.include_stopped_runtime:
                 runtime_seconds += runtime.total_seconds_stopped

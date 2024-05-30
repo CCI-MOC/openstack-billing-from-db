@@ -106,20 +106,15 @@ class Instance(object):
         in_error_state = False
         delete_action_found = False
 
-        # If the instance as a deleted_at time, clamp it to within
-        # the invoicing period.
-        if self.deleted_at:
-            self.deleted_at = self._clamp_time(self.deleted_at, start_time, end_time)
-
         for event in self.events:
-            event.time = self._clamp_time(event.time, start_time, end_time)
+            event_time = self._clamp_time(event.time, start_time, end_time)
 
             if event.message == "Error":
                 in_error_state = True
                 continue
 
             if event.name in ["create", "start"]:
-                last_start = event.time
+                last_start = event_time
                 in_error_state = False
 
                 # Count stopped time from last known stop.
@@ -135,7 +130,7 @@ class Instance(object):
                 delete_action_found = True
 
             if event.name in ["delete", "stop"]:
-                last_stop = event.time
+                last_stop = event_time
 
                 # Count running time from last known start.
                 if last_start:
@@ -152,7 +147,7 @@ class Instance(object):
 
         if self.deleted_at and not delete_action_found:
             self.no_delete_action = True
-            end_time = self.deleted_at
+            end_time = self._clamp_time(self.deleted_at, start_time, end_time)
 
         # Handle the time since the last event.
         if last_start:
