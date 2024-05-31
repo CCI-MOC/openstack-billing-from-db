@@ -8,10 +8,17 @@ import math
 import os
 
 from openstack_billing_db import model
+from openstack_billing_db import utils
 
 import boto3
 
 logger = logging.getLogger(__name__)
+
+# FIXME(knikolla): Temporarily hardcoding the days of outage here
+# until we have formalized how to store them in the nerc-rates repo.
+# Usage during these intervals is subtracted from the usage during
+# the month.
+OUTAGES_FOR_MONTH = {"2024-05": [("2024-05-22", "2024-05-29")]}
 
 
 @dataclass()
@@ -81,7 +88,26 @@ class ProjectInvoice(object):
         return self.rates.gpu_a2 * self.gpu_a2_su_hours
 
 
-def collect_invoice_data_from_openstack(database, billing_start, billing_end, rates):
+def get_runtime_for_instance(
+    instance: model.Instance,
+    start: datetime,
+    end: datetime,
+    excluded_intervals: list[(str, str)],
+):
+    runtime = instance.get_runtime_during(start, end)
+    for interval in excluded_intervals:
+        excluded_runtime = instance.get_runtime_during(
+            start_time=utils.parse_time_from_string(interval[0]),
+            end_time=utils.parse_time_from_string(interval[1]),
+        )
+        runtime = runtime - excluded_runtime
+
+    return runtime
+
+
+def collect_invoice_data_from_openstack(
+    database, billing_start, billing_end, rates, invoice_month=None
+):
     invoices = []
     for project in database.projects:
         invoice = ProjectInvoice(
@@ -94,8 +120,14 @@ def collect_invoice_data_from_openstack(database, billing_start, billing_end, ra
             rates=rates,
         )
 
+        excluded_intervals = []
+        if invoice_month:
+            excluded_intervals = OUTAGES_FOR_MONTH.get(invoice_month, [])
+
         for i in project.instances:  # type: model.Instance
-            runtime = i.get_runtime_during(billing_start, billing_end)
+            runtime = get_runtime_for_instance(
+                i, billing_start, billing_end, excluded_intervals
+            )
             runtime_seconds = runtime.total_seconds_running
             if rates.include_stopped_runtime:
                 runtime_seconds += runtime.total_seconds_stopped
@@ -221,7 +253,9 @@ def generate_billing(
 ):
     database = model.Database(start, sql_dump_file)
 
-    invoices = collect_invoice_data_from_openstack(database, start, end, rates)
+    invoices = collect_invoice_data_from_openstack(
+        database, start, end, rates, invoice_month=invoice_month
+    )
     if coldfront_data_file:
         merge_coldfront_data(invoices, coldfront_data_file)
     write(invoices, output, invoice_month)

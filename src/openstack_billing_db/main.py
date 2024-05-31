@@ -4,7 +4,7 @@ from datetime import timedelta
 import argparse
 import logging
 
-from openstack_billing_db import billing, fetch
+from openstack_billing_db import billing, fetch, utils
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 def parse_time_argument(arg):
     if isinstance(arg, str):
-        return datetime.strptime(arg, "%Y-%m-%d")
+        return utils.parse_time_from_string(arg)
     return arg
 
 
