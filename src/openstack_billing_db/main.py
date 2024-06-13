@@ -6,6 +6,8 @@ import logging
 
 from openstack_billing_db import billing, fetch, utils
 
+from nerc_rates import load_from_url
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -165,6 +167,11 @@ def main():
         default="/tmp/openstack_invoices.csv",
         help="Output path for invoice in CSV format.",
     )
+    parser.add_argument(
+        "--use-nerc-rates",
+        action="store_true",
+        help="Set to use usage rates from nerc-rates repo instead of cli arguements",
+    )
 
     args = parser.parse_args()
 
@@ -192,15 +199,38 @@ def main():
     if coldfront_data_file:
         logger.info(f"Using ColdFront data file at {coldfront_data_file}.")
 
-    rates = billing.Rates(
-        cpu=args.rate_cpu_su,
-        gpu_a100sxm4=args.rate_gpu_a100sxm4_su,
-        gpu_a100=args.rate_gpu_a100_su,
-        gpu_v100=args.rate_gpu_v100_su,
-        gpu_k80=args.rate_gpu_k80_su,
-        gpu_a2=args.rate_gpu_a2_su,
-        include_stopped_runtime=args.include_stopped_runtime,
-    )
+    if args.use_nerc_rates:
+        nerc_repo_rates = load_from_url()
+        rates = billing.Rates(
+            cpu=nerc_repo_rates.get_value_at("CPU SU Rate", args.invoice_month),
+            gpu_a100sxm4=nerc_repo_rates.get_value_at(
+                "GPUA100SXM4 SU Rate", args.invoice_month
+            ),
+            gpu_a100=nerc_repo_rates.get_value_at(
+                "GPUA100 SU Rate", args.invoice_month
+            ),
+            gpu_v100=nerc_repo_rates.get_value_at(
+                "GPUV100 SU Rate", args.invoice_month
+            ),
+            gpu_k80=nerc_repo_rates.get_value_at("GPUK80 SU Rate", args.invoice_month),
+            gpu_a2=nerc_repo_rates.get_value_at("GPUA2 SU Rate", args.invoice_month),
+            include_stopped_runtime=(
+                nerc_repo_rates.get_value_at(
+                    "Charge for Stopped Instances", args.invoice_month
+                )
+                == "True"
+            ),
+        )
+    else:
+        rates = billing.Rates(
+            cpu=args.rate_cpu_su,
+            gpu_a100sxm4=args.rate_gpu_a100sxm4_su,
+            gpu_a100=args.rate_gpu_a100_su,
+            gpu_v100=args.rate_gpu_v100_su,
+            gpu_k80=args.rate_gpu_k80_su,
+            gpu_a2=args.rate_gpu_a2_su,
+            include_stopped_runtime=args.include_stopped_runtime,
+        )
 
     billing.generate_billing(
         args.start,
