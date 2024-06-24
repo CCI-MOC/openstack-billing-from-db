@@ -1,3 +1,4 @@
+git+https://github.com/CCI-MOC/nerc-rates#egg=nerc_rates
 boto3
 dataclasses-json
 requests
