@@ -100,6 +100,11 @@ def get_runtime_for_instance(
             start_time=utils.parse_time_from_string(interval[0]),
             end_time=utils.parse_time_from_string(interval[1]),
         )
+        if excluded_runtime > 0:
+            logger.info(
+                f"Excluded {excluded_runtime} for instance {instance.name} with"
+                f" uuid {instance.uuid} during interval {interval}."
+            )
         runtime = runtime - excluded_runtime
 
     return runtime
