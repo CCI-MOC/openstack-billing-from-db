@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timedelta
 
-from openstack_billing_db.model import Instance, InstanceEvent
+from openstack_billing_db.model import Instance, InstanceEvent, Database
 from openstack_billing_db.tests.unit.utils import FLAVORS, MINUTE, HOUR, DAY, MONTH
 
 
@@ -158,3 +158,13 @@ def test_instance_no_delete_action_stopped_restarted():
     )
     assert r.total_seconds_running == (40 * MINUTE) + (40 * MINUTE)
     assert r.total_seconds_stopped == DAY - (40 * MINUTE)
+
+
+def test_instance_get_gpu_flavor():
+    test_pci_info = [("a100", "2"), ("a100-sxm4", "4")]
+    for pci_info in test_pci_info:
+        pci_request = [{"alias_name": pci_info[0], "count": pci_info[1]}]
+
+        su_type, count = Database._get_gpu_flavor_info(pci_request)
+        assert su_type == f"gpu_{pci_info[0]}"
+        assert count == int(pci_info[1])
