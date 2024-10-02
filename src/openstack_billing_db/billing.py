@@ -105,6 +105,17 @@ def get_runtime_for_instance(
     return runtime
 
 
+def set_invoice_su_hours(invoice, service_unit_type, su_hours):
+    su_hour_attr = f"{service_unit_type}_su_hours"
+    if hasattr(invoice, su_hour_attr):
+        invoice.__setattr__(
+            su_hour_attr, invoice.__getattribute__(su_hour_attr) + su_hours
+        )
+    else:
+        raise Exception(f"Invalid flavor {service_unit_type}.")
+    return invoice
+
+
 def collect_invoice_data_from_openstack(
     database, billing_start, billing_end, rates, invoice_month=None
 ):
@@ -139,20 +150,7 @@ def collect_invoice_data_from_openstack(
                 su = i.service_units
                 su_hours = runtime_hours * su
 
-                if i.service_unit_type == "CPU":
-                    invoice.cpu_su_hours += su_hours
-                elif i.service_unit_type == "GPU A100SXM4":
-                    invoice.gpu_a100sxm4_su_hours += su_hours
-                elif i.service_unit_type == "GPU A100":
-                    invoice.gpu_a100_su_hours += su_hours
-                elif i.service_unit_type == "GPU V100":
-                    invoice.gpu_v100_su_hours += su_hours
-                elif i.service_unit_type == "GPU K80":
-                    invoice.gpu_k80_su_hours += su_hours
-                elif i.service_unit_type == "GPU A2":
-                    invoice.gpu_a2_su_hours += su_hours
-                else:
-                    raise Exception("Invalid flavor.")
+                invoice = set_invoice_su_hours(invoice, i.service_unit_type, su_hours)
 
         invoices.append(invoice)
     return invoices
