@@ -200,20 +200,18 @@ def main():
         logger.info(f"Using ColdFront data file at {coldfront_data_file}.")
 
     if args.use_nerc_rates:
+
+        def get_decimal_rate(rate_name):
+            return Decimal(nerc_repo_rates.get_value_at(rate_name, args.invoice_month))
+
         nerc_repo_rates = load_from_url()
         rates = billing.Rates(
-            cpu=nerc_repo_rates.get_value_at("CPU SU Rate", args.invoice_month),
-            gpu_a100sxm4=nerc_repo_rates.get_value_at(
-                "GPUA100SXM4 SU Rate", args.invoice_month
-            ),
-            gpu_a100=nerc_repo_rates.get_value_at(
-                "GPUA100 SU Rate", args.invoice_month
-            ),
-            gpu_v100=nerc_repo_rates.get_value_at(
-                "GPUV100 SU Rate", args.invoice_month
-            ),
-            gpu_k80=nerc_repo_rates.get_value_at("GPUK80 SU Rate", args.invoice_month),
-            gpu_a2=nerc_repo_rates.get_value_at("GPUA2 SU Rate", args.invoice_month),
+            cpu=get_decimal_rate("CPU SU Rate"),
+            gpu_a100sxm4=get_decimal_rate("GPUA100SXM4 SU Rate"),
+            gpu_a100=get_decimal_rate("GPUA100 SU Rate"),
+            gpu_v100=get_decimal_rate("GPUV100 SU Rate"),
+            gpu_k80=get_decimal_rate("GPUK80 SU Rate"),
+            gpu_a2=get_decimal_rate("GPUA2 SU Rate"),
             include_stopped_runtime=(
                 nerc_repo_rates.get_value_at(
                     "Charge for Stopped Instances", args.invoice_month
@@ -231,6 +229,8 @@ def main():
             gpu_a2=args.rate_gpu_a2_su,
             include_stopped_runtime=args.include_stopped_runtime,
         )
+
+    logger.info(f"Using rates: {rates}.")
 
     billing.generate_billing(
         args.start,
