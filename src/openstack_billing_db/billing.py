@@ -18,7 +18,10 @@ logger = logging.getLogger(__name__)
 # until we have formalized how to store them in the nerc-rates repo.
 # Usage during these intervals is subtracted from the usage during
 # the month.
-OUTAGES_FOR_MONTH = {"2024-05": [("2024-05-22", "2024-05-29")]}
+OUTAGES_FOR_MONTH = {
+    "2024-05": [("2024-05-22", "2024-05-29")],
+    "2025-01": [("2025-01-14 14:00:00", "2025-01-15 17:00:00")],
+}
 
 
 @dataclass()

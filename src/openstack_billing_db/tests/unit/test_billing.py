@@ -23,10 +23,10 @@ def test_instance_simple_runtime():
         datetime(year=2000, month=2, day=1, hour=0, minute=0, second=0),
         excluded_intervals=[
             ["2000-01-07", "2000-01-08"],
-            ["2000-01-01", "2000-01-02"],
+            ["2000-01-01 09:00:00", "2000-01-01 10:00:00"],
         ],
     )
-    assert r.total_seconds_running == (15 * DAY) - (DAY * 2)
+    assert r.total_seconds_running == (15 * DAY) - (DAY * 1) - (HOUR * 1)
     assert r.total_seconds_stopped == 0
 
 
