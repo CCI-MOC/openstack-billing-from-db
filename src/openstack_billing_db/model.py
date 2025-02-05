@@ -177,7 +177,13 @@ class Database(BaseDatabase):
             raise Exception
 
         pci_name = pci_info[0].get("alias_name", "").lower()
-        if pci_name not in ["a100", "a100-sxm4", "v100", "k80"]:
+        if pci_name not in [
+            "a100",
+            "a100-sxm4",
+            "v100",
+            "k80",
+            "h100",
+        ]:  # TODO Confirm this is the pci_name for H100s
             raise Exception(f"Invalid pci_name {pci_name}.")
 
         count = int(pci_info[0]["count"])

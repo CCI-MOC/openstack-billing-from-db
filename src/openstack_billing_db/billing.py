@@ -32,6 +32,7 @@ class Rates(object):
     gpu_v100: Decimal
     gpu_a2: Decimal
     gpu_k80: Decimal
+    gpu_h100: Decimal
 
     include_stopped_runtime: bool
 
@@ -41,6 +42,7 @@ class Rates(object):
     gpu_v100_su_name: str = "OpenStack GPUV100"
     gpu_a2_su_name: str = "OpenStack GPUA2"
     gpu_k80_su_name: str = "OpenStack GPUK80"
+    gpu_h100_su_name: str = "OpenStack GPUH100"  # TODO Confirm this is SU name for H100
 
 
 @dataclass()
@@ -63,6 +65,7 @@ class ProjectInvoice(object):
     gpu_v100_su_hours: int = 0
     gpu_k80_su_hours: int = 0
     gpu_a2_su_hours: int = 0
+    gpu_h100_su_hours: int = 0
 
     institution_specific_code: str = "N/A"
 
@@ -89,6 +92,10 @@ class ProjectInvoice(object):
     @property
     def gpu_a2_su_cost(self) -> Decimal:
         return self.rates.gpu_a2 * self.gpu_a2_su_hours
+
+    @property
+    def gpu_h100_su_cost(self) -> Decimal:
+        return self.rates.gpu_h100 * self.gpu_h100_su_hours
 
 
 def get_runtime_for_instance(
@@ -210,6 +217,7 @@ def write(invoices, output, invoice_month=None):
                 "gpu_v100",
                 "gpu_k80",
                 "gpu_a2",
+                "gpu_h100",
             ]:
                 # Each project gets two rows, one for CPU and one for GPU
                 hours = invoice.__getattribute__(f"{invoice_type}_su_hours")
