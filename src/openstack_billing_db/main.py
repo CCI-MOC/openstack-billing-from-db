@@ -135,6 +135,9 @@ def main():
         "--rate-gpu-a2-su", default=0, type=Decimal, help="Rate of GPU A2 SU/hr"
     )
     parser.add_argument(
+        "--rate-gpu-h100-su", default=0, type=Decimal, help="Rate of GPU H100 SU/hr"
+    )
+    parser.add_argument(
         "--include-stopped-runtime",
         default=False,
         type=bool,
@@ -212,6 +215,7 @@ def main():
             gpu_v100=get_decimal_rate("GPUV100 SU Rate"),
             gpu_k80=get_decimal_rate("GPUK80 SU Rate"),
             gpu_a2=get_decimal_rate("GPUA2 SU Rate"),
+            gpu_h100=get_decimal_rate("GPUH100 SU Rate"),
             include_stopped_runtime=(
                 nerc_repo_rates.get_value_at(
                     "Charge for Stopped Instances", args.invoice_month
@@ -227,6 +231,7 @@ def main():
             gpu_v100=args.rate_gpu_v100_su,
             gpu_k80=args.rate_gpu_k80_su,
             gpu_a2=args.rate_gpu_a2_su,
+            gpu_h100=args.rate_gpu_h100_su,
             include_stopped_runtime=args.include_stopped_runtime,
         )
 

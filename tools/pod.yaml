@@ -27,5 +27,6 @@ spec:
             --rate-gpu-a100-su 1.803 \
             --rate-gpu-v100-su 1.214 \
             --rate-gpu-k80-su 0.463 \
-            --rate-gpu-a2-su 0.463
+            --rate-gpu-a2-su 0.463 \
+            --rate-gpu-h100-su 6.04 \
     imagePullPolicy: Always
