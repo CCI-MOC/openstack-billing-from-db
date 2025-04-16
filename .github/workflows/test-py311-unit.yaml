@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: 3.11
 
-      - name: Install ColdFront and plugin
+      - name: Install normal and test requirements
         run: |
           ./ci/setup.sh
 
