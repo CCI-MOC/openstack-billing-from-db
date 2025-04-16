@@ -19,7 +19,6 @@ spec:
             --invoice-month 2024-03 \
             --include-stopped-runtime True \
             --upload-to-s3 True \
-            --download-coldfront-data True \
             --download-sql-dump-from-s3 True \
             --convert-sql-dump-file-to-sqlite True \
             --rate-cpu-su 0.013 \

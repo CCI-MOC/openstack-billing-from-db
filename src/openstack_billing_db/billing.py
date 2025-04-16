@@ -159,26 +159,6 @@ def collect_invoice_data_from_openstack(
     return invoices
 
 
-def merge_coldfront_data(invoices, coldfront_data_file):
-    with open(coldfront_data_file, "r") as f:
-        allocations = json.load(f)
-
-    by_project_id = {
-        a["attributes"].get("Allocated Project ID"): a for a in allocations
-    }
-
-    for invoice in invoices:
-        try:
-            a = by_project_id[invoice.project_id]
-            invoice.project_name = a["attributes"]["Allocated Project Name"]
-            invoice.institution_specific_code = a["attributes"].get(
-                "Institution-Specific Code", "N/A"
-            )
-            invoice.pi = a["project"]["pi"]
-        except KeyError:
-            continue
-
-
 def write(invoices, output, invoice_month=None):
     with open(output, "w", newline="") as f:
         csv_invoice_writer = csv.writer(
@@ -246,7 +226,6 @@ def generate_billing(
     end,
     output,
     rates,
-    coldfront_data_file=None,
     invoice_month=None,
     upload_to_s3=False,
     sql_dump_file=None,
@@ -257,8 +236,6 @@ def generate_billing(
     invoices = collect_invoice_data_from_openstack(
         database, start, end, rates, invoice_month=invoice_month
     )
-    if coldfront_data_file:
-        merge_coldfront_data(invoices, coldfront_data_file)
     write(invoices, output, invoice_month)
 
     if upload_to_s3:

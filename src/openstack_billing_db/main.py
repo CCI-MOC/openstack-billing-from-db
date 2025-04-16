@@ -64,27 +64,6 @@ def main():
         ),
     )
     parser.add_argument(
-        "--coldfront-data-file",
-        default=None,
-        help=(
-            "Path to JSON Output of ColdFront's /api/allocations."
-            "Used for populating project names and PIs. If"
-            " --download-coldfront-data option is applied, this"
-            " location will be used to save the downloaded output."
-        ),
-    )
-    parser.add_argument(
-        "--download-coldfront-data",
-        default=False,
-        help=(
-            "Download ColdFront data from ColdFront. Requires the environment"
-            " variables KEYCLOAK_CLIENT_ID and KEYCLOAK_CLIENT_SECRET."
-            " Default to NERC Keycloak and ColdFront but can be"
-            " configure using KEYCLOAK_TOKEN_URL and COLDFRONT_URL environment"
-            " variables."
-        ),
-    )
-    parser.add_argument(
         "--sql-dump-file",
         default="",
         help=(
@@ -192,13 +171,6 @@ def main():
             "Must provide either --sql_dump_file" "or --download_dump_from_s3."
         )
 
-    coldfront_data_file = args.coldfront_data_file
-    if args.download_coldfront_data:
-        coldfront_data_file = fetch.download_coldfront_data(coldfront_data_file)
-
-    if coldfront_data_file:
-        logger.info(f"Using ColdFront data file at {coldfront_data_file}.")
-
     if args.use_nerc_rates:
 
         def get_decimal_rate(rate_name):
@@ -237,7 +209,6 @@ def main():
         args.end,
         args.output_file,
         rates,
-        coldfront_data_file=coldfront_data_file,
         invoice_month=args.invoice_month,
         upload_to_s3=args.upload_to_s3,
         sql_dump_file=dump_file,
