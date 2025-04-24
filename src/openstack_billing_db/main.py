@@ -202,7 +202,7 @@ def main():
     if args.use_nerc_rates:
 
         def get_decimal_rate(rate_name):
-            return Decimal(nerc_repo_rates.get_value_at(rate_name, args.invoice_month))
+            return nerc_repo_rates.get_value_at(rate_name, args.invoice_month, Decimal)
 
         nerc_repo_rates = load_from_url()
         rates = billing.Rates(
@@ -214,9 +214,8 @@ def main():
             gpu_a2=get_decimal_rate("GPUA2 SU Rate"),
             include_stopped_runtime=(
                 nerc_repo_rates.get_value_at(
-                    "Charge for Stopped Instances", args.invoice_month
+                    "Charge for Stopped Instances", args.invoice_month, bool
                 )
-                == "True"
             ),
         )
     else:
