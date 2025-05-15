@@ -168,7 +168,7 @@ def main():
 
     if not dump_file:
         raise Exception(
-            "Must provide either --sql_dump_file" "or --download_dump_from_s3."
+            "Must provide either --sql_dump_fileor --download_dump_from_s3."
         )
 
     if args.use_nerc_rates:

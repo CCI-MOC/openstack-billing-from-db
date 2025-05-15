@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from openstack_billing_db.model import Instance, InstanceEvent, Database
-from openstack_billing_db.tests.unit.utils import FLAVORS, MINUTE, HOUR, DAY, MONTH
+from openstack_billing_db.tests.unit.utils import FLAVORS, MINUTE, DAY, MONTH
 
 
 def test_instance_simple_runtime():

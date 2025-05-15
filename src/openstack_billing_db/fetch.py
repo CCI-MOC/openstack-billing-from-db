@@ -4,8 +4,6 @@ import os
 import subprocess
 
 import boto3
-import requests
-from requests.auth import HTTPBasicAuth
 
 logger = logging.getLogger(__name__)
 

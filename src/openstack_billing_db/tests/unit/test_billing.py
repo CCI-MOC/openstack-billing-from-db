@@ -4,7 +4,7 @@ import pytest
 
 from openstack_billing_db import billing
 from openstack_billing_db.model import Instance, InstanceEvent
-from openstack_billing_db.tests.unit.utils import FLAVORS, MINUTE, HOUR, DAY, MONTH
+from openstack_billing_db.tests.unit.utils import FLAVORS, HOUR, DAY
 
 
 def test_instance_simple_runtime():
@@ -46,5 +46,5 @@ def test_billing_add_su_hours():
     invoice = billing.set_invoice_su_hours(invoice, "gpu_a100", 48)
     assert invoice.gpu_a100_su_hours == 48
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(Exception):
         invoice = billing.set_invoice_su_hours(invoice, "gpu_fake", 72)
