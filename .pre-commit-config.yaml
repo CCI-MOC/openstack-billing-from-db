@@ -10,7 +10,8 @@ repos:
       - id: detect-private-key
       - id: check-yaml
 
-  - repo: https://github.com/psf/black
-    rev: 24.4.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.10
     hooks:
-      - id: black
+      - id: ruff
+      - id: ruff-format
