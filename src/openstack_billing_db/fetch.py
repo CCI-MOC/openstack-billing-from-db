@@ -2,6 +2,7 @@ from datetime import datetime
 import logging
 import os
 import subprocess
+import tempfile
 
 import boto3
 import requests
@@ -74,27 +75,21 @@ def download_latest_dump_from_s3() -> str:
     if not key:
         raise Exception(f"No database dumps found for {today}")
 
-    filename = os.path.basename(key)
-    download_location = f"/tmp/{filename}"
-
-    logger.info(f"Downloading {key} to {download_location}.")
-    s3.download_file(s3_bucket, key, download_location)
-
+    tmp_gz = tempfile.NamedTemporaryFile(delete=True, suffix=".gz")
+    s3.download_file(s3_bucket, key, tmp_gz.name)
+    logger.info(f"Downloading {key} to {tmp_gz.name}")
     logger.info("Download complete.")
 
-    path_without_ext, extension = os.path.splitext(download_location)
-    if extension == ".gz":
-        logger.info(f"Uncompressing {download_location}")
-        command = subprocess.run(["gzip", "-d", download_location])
-        if command.returncode != 0:
-            raise Exception(f"Error uncompressing {download_location}.")
+    tmp_sql = tempfile.NamedTemporaryFile(delete=True, suffix=".sql", mode="wb")
+    logger.info(f"Uncompressing {tmp_gz.name}")
+    result = subprocess.run(["gzip", "-cd", tmp_gz.name], stdout=tmp_sql)
+    tmp_sql.flush()
 
-        # Uncompressing removes the .gz, so the file should be named
-        # same as path above, and the new extension should be .sql.
-        download_location = path_without_ext
-        logger.info(f"Uncompressed at {path_without_ext}.")
+    if result.returncode != 0:
+        raise Exception(f"Error uncompressing {tmp_gz.name}.")
 
-    return download_location
+    logger.info(f"Uncompressed at {tmp_sql.name}")
+    return tmp_sql.name
 
 
 def convert_mysqldump_to_sqlite(path_to_dump) -> str:
@@ -112,15 +107,17 @@ def convert_mysqldump_to_sqlite(path_to_dump) -> str:
 
     logger.info("Converting MySQL dump to SQLite compatible.")
 
-    destination_path = f"/tmp/{os.path.basename(path_without_ext)}_converted.sql"
-    with open(f"{destination_path}", "w") as f:
-        command = subprocess.run(["mysql2sqlite", path_to_dump], stdout=f)
+    tmp_converted = tempfile.NamedTemporaryFile(
+        delete=True, suffix="_converted.sql", mode="w+"
+    )
+    command = subprocess.run(["mysql2sqlite", path_to_dump], stdout=tmp_converted)
+    tmp_converted.flush()
 
     if command.returncode != 0:
         raise Exception(
             f"Error converting {path_to_dump} to SQLite compatible"
-            f" at {destination_path}."
+            f" at {tmp_converted.name}."
         )
 
-    logger.info(f"Converted at {destination_path}.")
-    return destination_path
+    logger.info(f"Converted at {tmp_converted.name}.")
+    return tmp_converted.name
