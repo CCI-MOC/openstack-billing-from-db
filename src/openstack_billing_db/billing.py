@@ -172,6 +172,7 @@ def write(invoices, output, invoice_month=None):
                 "Project - Allocation",
                 "Project - Allocation ID",
                 "Manager (PI)",
+                "Cluster Name",
                 "Invoice Email",
                 "Invoice Address",
                 "Institution",
@@ -210,6 +211,7 @@ def write(invoices, output, invoice_month=None):
                             invoice.project_name,
                             invoice.project_id,
                             invoice.pi,
+                            "stack",  # Cluster Name
                             "",  # Invoice Email
                             "",  # Invoice Address
                             invoice.institution,
