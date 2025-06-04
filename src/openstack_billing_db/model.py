@@ -73,6 +73,38 @@ class Instance(object):
         return time
 
     def get_runtime_during(self, start_time, end_time):
+        def get_shelved_time():
+            last_event = None
+            last_shelve_time = None
+            total_shelve_time = 0
+            for event in self.events:
+                event_time = self._clamp_time(event.time, start_time, end_time)
+
+                if event.name == "shelve":
+                    last_shelve_time = event_time
+                    if last_event == "stop":
+                        logger.warning(
+                            f"Instance {self.name} was shelved or unshelved while stopped. Billing may be incorrect!"
+                        )
+
+                elif event.name == "unshelve":
+                    if last_shelve_time:
+                        total_shelve_time += (
+                            event_time - last_shelve_time
+                        ).total_seconds()
+                    if last_event != "shelve":
+                        logger.warning(
+                            f"Instance {self.name} was shelved or unshelved while stopped. Billing may be incorrect!"
+                        )
+
+                last_event = event.name
+
+            if last_shelve_time and last_event == "shelve":
+                # If the last event was a shelve, we count the time until the end_time.
+                total_shelve_time += (end_time - last_shelve_time).total_seconds()
+
+            return total_shelve_time
+
         runtime = InstanceRuntime()
 
         last_start = None  # Time the instance was last started
@@ -86,6 +118,9 @@ class Instance(object):
 
             if event.message == "Error":
                 in_error_state = True
+                continue
+
+            if event.name in ["shelve", "unshelve"]:
                 continue
 
             if event.name in ["create", "start"]:
@@ -127,6 +162,8 @@ class Instance(object):
 
         if last_event_name == "stop" and not in_error_state:
             runtime.total_seconds_stopped += (end_time - last_stop).total_seconds()
+
+        runtime.total_seconds_running -= get_shelved_time()
 
         return runtime
 
