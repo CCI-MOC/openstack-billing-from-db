@@ -160,6 +160,28 @@ def test_instance_no_delete_action_stopped_restarted():
     assert r.total_seconds_stopped == DAY - (40 * MINUTE)
 
 
+def test_instance_stopped_and_deleted():
+    time = datetime(year=2000, month=1, day=2, hour=0, minute=0, second=0)
+    events = [
+        InstanceEvent(time=time, name="create", message=""),
+        InstanceEvent(time=time + timedelta(hours=1), name="stop", message=""),
+        InstanceEvent(time=time + timedelta(hours=2), name="delete", message=""),
+    ]
+    i = Instance(
+        uuid=uuid.uuid4().hex,
+        name=uuid.uuid4().hex,
+        flavor=FLAVORS[1],
+        events=events,
+    )
+
+    r = i.get_runtime_during(
+        datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0),
+        datetime(year=2000, month=2, day=1, hour=0, minute=0, second=0),
+    )
+    assert r.total_seconds_running == (1 * HOUR)
+    assert r.total_seconds_stopped == (1 * HOUR)
+
+
 def test_instance_get_gpu_flavor():
     test_pci_info = [("a100", "2"), ("a100-sxm4", "4")]
     answers = [("gpu_a100", 2), ("gpu_a100sxm4", 4)]

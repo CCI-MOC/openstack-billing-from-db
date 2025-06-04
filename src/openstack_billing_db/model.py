@@ -77,6 +77,7 @@ class Instance(object):
 
         last_start = None  # Time the instance was last started
         last_stop = None  # Time the instance was last stopped
+        last_event_name = None
         in_error_state = False
         delete_action_found = False
 
@@ -96,14 +97,8 @@ class Instance(object):
                     runtime.total_seconds_stopped += (
                         last_start - last_stop
                     ).total_seconds()
-                    last_stop = None
 
-            # Some deleted instances do not have a delete event, they do
-            # however have a deleted_at timestamp.
-            if event.name == "delete":
-                delete_action_found = True
-
-            if event.name in ["delete", "stop"]:
+            if event.name == "stop":
                 last_stop = event_time
 
                 # Count running time from last known start.
@@ -111,23 +106,26 @@ class Instance(object):
                     runtime.total_seconds_running += (
                         last_stop - last_start
                     ).total_seconds()
-                    last_start = None
 
             if event.name == "delete":
-                # Prevent counting deletion as a stopped state by
-                # unsetting the last stop time.
-                last_stop = None
+                # Some deleted instances do not have a delete event, they do
+                # however have a deleted_at timestamp.
+                # Delete event takes precedence over deleted_at.
+                delete_action_found = True
+                end_time = self._clamp_time(event_time, start_time, end_time)
                 break
+
+            last_event_name = event.name
 
         if self.deleted_at and not delete_action_found:
             self.no_delete_action = True
             end_time = self._clamp_time(self.deleted_at, start_time, end_time)
 
         # Handle the time since the last event.
-        if last_start:
+        if last_event_name in ["create", "start"]:
             runtime.total_seconds_running += (end_time - last_start).total_seconds()
 
-        if last_stop and not in_error_state:
+        if last_event_name == "stop" and not in_error_state:
             runtime.total_seconds_stopped += (end_time - last_stop).total_seconds()
 
         return runtime
