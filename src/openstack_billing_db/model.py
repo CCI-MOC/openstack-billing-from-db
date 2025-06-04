@@ -10,6 +10,21 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class State:
+    name: str
+    triggers: list[str]
+
+    time_in: int = 0
+    _last_entered: datetime.datetime = None
+
+    def enter(self, time: datetime.datetime):
+        self._last_entered = time
+
+    def exit(self, time: datetime.datetime):
+        self.time_in += (time - self._last_entered).total_seconds()
+
+
 @dataclass_json()
 @dataclass()
 class Flavor(object):
@@ -73,61 +88,71 @@ class Instance(object):
         return time
 
     def get_runtime_during(self, start_time, end_time):
+        def run_state_machine():
+            """
+            Iterates through `self.events` to determine time
+            spent in various VM states (i.e running, stopped)
+            """
+            current_state = None
+            for event in self.events:
+                event_time = self._clamp_time(event.time, start_time, end_time)
+
+                # Error state can only be determined by the event message
+                if event.message == "Error":
+                    if current_state is None:
+                        current_state = enter_state("Error", event_time)
+                    else:
+                        current_state.exit(event_time)
+                        current_state = enter_state("Error", event.time)
+                    continue
+
+                for state in vm_states:
+                    if event.name in state.triggers:
+                        if current_state is None:
+                            current_state = state
+                            state.enter(event_time)
+                        elif state.name != current_state.name:
+                            current_state.exit(event_time)
+                            current_state = state
+                            state.enter(event_time)
+
+            # Some VM instances may have a `deleted_at` time, another trigger for the `Deleted` state
+            if self.deleted_at:
+                deleted_at_time = self._clamp_time(
+                    self.deleted_at, start_time, end_time
+                )
+                current_state.exit(deleted_at_time)
+                current_state = enter_state("Deleted", deleted_at_time)
+
+            current_state.exit(end_time)
+
+        def get_state_time(state_name):
+            for state in vm_states:
+                if state.name == state_name:
+                    return state.time_in
+
+        def enter_state(state_name, enter_time) -> State:
+            for state in vm_states:
+                if state.name == state_name:
+                    state.enter(enter_time)
+                    return state
+
         runtime = InstanceRuntime()
+        vm_states = [
+            State(state_name, state_triggers)
+            for state_name, state_triggers in (
+                ("Running", ["unshelve", "create", "start"]),
+                ("Shelved", ["shelve"]),
+                ("Stopped", ["stop"]),
+                ("Deleted", ["delete"]),
+                ("Error", []),
+            )
+        ]
 
-        last_start = None  # Time the instance was last started
-        last_stop = None  # Time the instance was last stopped
-        last_event_name = None
-        in_error_state = False
-        delete_action_found = False
+        run_state_machine()
 
-        for event in self.events:
-            event_time = self._clamp_time(event.time, start_time, end_time)
-
-            if event.message == "Error":
-                in_error_state = True
-                continue
-
-            if event.name in ["create", "start"]:
-                last_start = event_time
-                in_error_state = False
-
-                # Count stopped time from last known stop.
-                if last_stop:
-                    runtime.total_seconds_stopped += (
-                        last_start - last_stop
-                    ).total_seconds()
-
-            if event.name == "stop":
-                last_stop = event_time
-
-                # Count running time from last known start.
-                if last_start:
-                    runtime.total_seconds_running += (
-                        last_stop - last_start
-                    ).total_seconds()
-
-            if event.name == "delete":
-                # Some deleted instances do not have a delete event, they do
-                # however have a deleted_at timestamp.
-                # Delete event takes precedence over deleted_at.
-                delete_action_found = True
-                end_time = self._clamp_time(event_time, start_time, end_time)
-                break
-
-            last_event_name = event.name
-
-        if self.deleted_at and not delete_action_found:
-            self.no_delete_action = True
-            end_time = self._clamp_time(self.deleted_at, start_time, end_time)
-
-        # Handle the time since the last event.
-        if last_event_name in ["create", "start"]:
-            runtime.total_seconds_running += (end_time - last_start).total_seconds()
-
-        if last_event_name == "stop" and not in_error_state:
-            runtime.total_seconds_stopped += (end_time - last_stop).total_seconds()
-
+        runtime.total_seconds_running = get_state_time("Running")
+        runtime.total_seconds_stopped = get_state_time("Stopped")
         return runtime
 
     @property
