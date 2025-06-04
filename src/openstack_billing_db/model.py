@@ -73,61 +73,59 @@ class Instance(object):
         return time
 
     def get_runtime_during(self, start_time, end_time):
+        def get_time_in_event_pairs(start_events, end_events, warn=False):
+            last_event = None
+            last_start_time = None
+            total_time = 0
+            for event in self.events:
+                event_time = self._clamp_time(event.time, start_time, end_time)
+                if event.name in start_events:
+                    last_start_time = event_time
+                elif event.name in end_events:
+                    if last_start_time:
+                        total_time += (event_time - last_start_time).total_seconds()
+                        last_start_time = None
+                    if last_event and last_event not in start_events and warn:
+                        logger.warning(
+                            f"Instance {self.name} was {last_event} between being {start_events} and {end_events}. Billing may be incorrect!"
+                        )
+
+                last_event = event.name
+
+            # Account for last event pair that hasn't ended
+            if last_start_time and not in_error_state:
+                total_time += (end_time - last_start_time).total_seconds()
+
+            return total_time
+
         runtime = InstanceRuntime()
 
-        last_start = None  # Time the instance was last started
-        last_stop = None  # Time the instance was last stopped
-        last_event_name = None
         in_error_state = False
         delete_action_found = False
 
         for event in self.events:
-            event_time = self._clamp_time(event.time, start_time, end_time)
-
             if event.message == "Error":
                 in_error_state = True
-                continue
-
-            if event.name in ["create", "start"]:
-                last_start = event_time
+            elif event.name in ["create", "start"]:
                 in_error_state = False
-
-                # Count stopped time from last known stop.
-                if last_stop:
-                    runtime.total_seconds_stopped += (
-                        last_start - last_stop
-                    ).total_seconds()
-
-            if event.name == "stop":
-                last_stop = event_time
-
-                # Count running time from last known start.
-                if last_start:
-                    runtime.total_seconds_running += (
-                        last_stop - last_start
-                    ).total_seconds()
-
-            if event.name == "delete":
+            elif event.name == "delete":
                 # Some deleted instances do not have a delete event, they do
                 # however have a deleted_at timestamp.
                 # Delete event takes precedence over deleted_at.
                 delete_action_found = True
-                end_time = self._clamp_time(event_time, start_time, end_time)
+                end_time = self._clamp_time(event.time, start_time, end_time)
                 break
-
-            last_event_name = event.name
 
         if self.deleted_at and not delete_action_found:
             self.no_delete_action = True
             end_time = self._clamp_time(self.deleted_at, start_time, end_time)
 
-        # Handle the time since the last event.
-        if last_event_name in ["create", "start"]:
-            runtime.total_seconds_running += (end_time - last_start).total_seconds()
+        run_time = get_time_in_event_pairs(["create", "start"], ["stop"])
+        stopped_time = get_time_in_event_pairs(["stop"], ["start"], warn=True)
+        shelved_time = get_time_in_event_pairs(["shelve"], ["unshelve"], warn=True)
 
-        if last_event_name == "stop" and not in_error_state:
-            runtime.total_seconds_stopped += (end_time - last_stop).total_seconds()
-
+        runtime.total_seconds_running = run_time - shelved_time
+        runtime.total_seconds_stopped = stopped_time
         return runtime
 
     @property

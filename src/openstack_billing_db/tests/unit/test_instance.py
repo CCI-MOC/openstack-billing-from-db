@@ -1,8 +1,9 @@
 import uuid
+from unittest.mock import patch
 from datetime import datetime, timedelta
 
 from openstack_billing_db.model import Instance, InstanceEvent, Database
-from openstack_billing_db.tests.unit.utils import FLAVORS, MINUTE, DAY, MONTH
+from openstack_billing_db.tests.unit.utils import FLAVORS, MINUTE, HOUR, DAY, MONTH
 
 
 def test_instance_simple_runtime():
@@ -180,6 +181,108 @@ def test_instance_stopped_and_deleted():
     )
     assert r.total_seconds_running == (1 * HOUR)
     assert r.total_seconds_stopped == (1 * HOUR)
+
+
+def test_instance_shelved_and_unshelved():
+    time = datetime(year=2000, month=1, day=2, hour=0, minute=0, second=0)
+    events = [
+        InstanceEvent(time=time, name="create", message=""),
+        InstanceEvent(time=time + timedelta(minutes=40), name="shelve", message=""),
+        InstanceEvent(time=time + timedelta(days=1), name="unshelve", message=""),
+    ]
+    i = Instance(
+        uuid=uuid.uuid4().hex,
+        name=uuid.uuid4().hex,
+        flavor=FLAVORS[1],
+        events=events,
+        deleted_at=time + timedelta(days=1, minutes=40),
+    )
+
+    r = i.get_runtime_during(
+        datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0),
+        datetime(year=2000, month=2, day=1, hour=0, minute=0, second=0),
+    )
+
+    assert r.total_seconds_running == (40 * MINUTE) + (40 * MINUTE)
+    assert r.total_seconds_stopped == 0
+
+
+def test_instance_shelved_no_unshelved():
+    time = datetime(year=2000, month=1, day=2, hour=0, minute=0, second=0)
+    events = [
+        InstanceEvent(time=time, name="create", message=""),
+        InstanceEvent(time=time + timedelta(minutes=40), name="shelve", message=""),
+    ]
+    i = Instance(
+        uuid=uuid.uuid4().hex,
+        name=uuid.uuid4().hex,
+        flavor=FLAVORS[1],
+        events=events,
+        deleted_at=time + timedelta(days=1, minutes=40),
+    )
+
+    r = i.get_runtime_during(
+        datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0),
+        datetime(year=2000, month=2, day=1, hour=0, minute=0, second=0),
+    )
+    assert r.total_seconds_running == (40 * MINUTE)
+    assert r.total_seconds_stopped == 0
+
+
+def test_instance_shelved_unshelved_stopped():
+    time = datetime(year=2000, month=1, day=2, hour=0, minute=0, second=0)
+    events = [
+        InstanceEvent(time=time, name="create", message=""),
+        InstanceEvent(time=time + timedelta(minutes=40), name="stop", message=""),
+        InstanceEvent(time=time + timedelta(days=1), name="start", message=""),
+        InstanceEvent(
+            time=time + timedelta(days=1, hours=6), name="shelve", message=""
+        ),
+        InstanceEvent(
+            time=time + timedelta(days=1, hours=12), name="unshelve", message=""
+        ),
+    ]
+    i = Instance(
+        uuid=uuid.uuid4().hex,
+        name=uuid.uuid4().hex,
+        flavor=FLAVORS[1],
+        events=events,
+        deleted_at=time + timedelta(days=2),
+    )
+
+    r = i.get_runtime_during(
+        datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0),
+        datetime(year=2000, month=2, day=1, hour=0, minute=0, second=0),
+    )
+    assert r.total_seconds_running == (40 * MINUTE) + (6 * HOUR) + (12 * HOUR)
+    assert r.total_seconds_stopped == DAY - (40 * MINUTE)
+
+
+@patch("openstack_billing_db.model.logger")
+def test_instance_warn_shelved_state(mock_logger):
+    time = datetime(year=2000, month=1, day=2, hour=0, minute=0, second=0)
+    events = [
+        InstanceEvent(time=time, name="create", message=""),
+        InstanceEvent(time=time + timedelta(hours=1), name="shelve", message=""),
+        InstanceEvent(time=time + timedelta(hours=2), name="stop", message=""),
+        InstanceEvent(time=time + timedelta(hours=3), name="unshelve", message=""),
+    ]
+    instance_name = uuid.uuid4().hex
+    i = Instance(
+        uuid=uuid.uuid4().hex,
+        name=instance_name,
+        flavor=FLAVORS[1],
+        events=events,
+        deleted_at=time + timedelta(days=1),
+    )
+
+    _ = i.get_runtime_during(
+        datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0),
+        datetime(year=2000, month=2, day=1, hour=0, minute=0, second=0),
+    )
+    mock_logger.warning.assert_called_with(
+        f"Instance {instance_name} was stop between being ['shelve'] and ['unshelve']. Billing may be incorrect!"
+    )
 
 
 def test_instance_get_gpu_flavor():
