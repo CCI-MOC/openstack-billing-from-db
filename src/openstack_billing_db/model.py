@@ -103,7 +103,7 @@ class Instance(object):
                         current_state = enter_state("Error", event_time)
                     else:
                         current_state.exit(event_time)
-                        current_state = enter_state("Error", event.time)
+                        current_state = enter_state("Error", event_time)
                     continue
 
                 for state in vm_states:
