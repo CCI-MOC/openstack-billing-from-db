@@ -95,26 +95,26 @@ class Instance(object):
             """
             current_state = None
             for event in self.events:
-                event_time = self._clamp_time(event.time, start_time, end_time)
+                clamped_event_time = self._clamp_time(event.time, start_time, end_time)
 
                 # Error state can only be determined by the event message
                 if event.message == "Error":
                     if current_state is None:
-                        current_state = enter_state("Error", event_time)
+                        current_state = enter_state("Error", clamped_event_time)
                     else:
-                        current_state.exit(event_time)
-                        current_state = enter_state("Error", event_time)
+                        current_state.exit(clamped_event_time)
+                        current_state = enter_state("Error", clamped_event_time)
                     continue
 
                 for state in vm_states:
                     if event.name in state.triggers:
                         if current_state is None:
                             current_state = state
-                            state.enter(event_time)
+                            state.enter(clamped_event_time)
                         elif state.name != current_state.name:
-                            current_state.exit(event_time)
+                            current_state.exit(clamped_event_time)
                             current_state = state
-                            state.enter(event_time)
+                            state.enter(clamped_event_time)
 
             # Some VM instances may have a `deleted_at` time, another trigger for the `Deleted` state
             if self.deleted_at:

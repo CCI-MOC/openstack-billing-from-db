@@ -337,3 +337,26 @@ def test_instance_get_gpu_flavor():
         su_type, count = Database._get_gpu_flavor_info(pci_request)
         assert su_type == answers[i][0]
         assert count == answers[i][1]
+
+
+def test_error_event_outside_window():
+    start = datetime(2000, 1, 1, 0, 0, 0)
+    end = datetime(2000, 2, 1, 0, 0, 0)
+    events = [
+        InstanceEvent(time=start - timedelta(hours=1), name="create", message="Error")
+    ]
+    # Case 1: Error BEFORE window
+    i = Instance(
+        uuid=uuid.uuid4().hex, name=uuid.uuid4().hex, flavor=FLAVORS[1], events=events
+    )
+    r_before = i.get_runtime_during(start, end)
+    assert r_before.total_seconds_running == 0
+    assert r_before.total_seconds_stopped == 0
+    # Case 2: Error AFTER window
+    i.events = [
+        InstanceEvent(time=start, name="create", message=""),
+        InstanceEvent(time=end + timedelta(hours=1), name="stop", message="Error"),
+    ]
+    r_after = i.get_runtime_during(start, end)
+    assert r_after.total_seconds_running == 1 * MONTH
+    assert r_after.total_seconds_stopped == 0
