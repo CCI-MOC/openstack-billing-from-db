@@ -7,25 +7,13 @@ import math
 import os
 
 from openstack_billing_db import model
-from openstack_billing_db import utils
 
 import boto3
+from nerc_rates import outages
 
 logger = logging.getLogger(__name__)
 
-# FIXME(knikolla): Temporarily hardcoding the days of outage here
-# until we have formalized how to store them in the nerc-rates repo.
-# Usage during these intervals is subtracted from the usage during
-# the month.
-OUTAGES_FOR_MONTH = {
-    "2024-05": [("2024-05-22", "2024-05-29")],
-    "2025-01": [("2025-01-14 14:00:00", "2025-01-15 17:00:00")],
-    "2025-04": [("2025-04-27 05:05:00", "2025-04-27 15:40:00")],
-    "2025-05": [("2025-05-13 12:00:00", "2025-05-13 21:00:00")],
-    "2025-06": [("2025-06-02 19:00:00", "2025-06-04 21:00:00")],
-    "2025-08": [("2025-08-12 12:00:00", "2025-08-12 21:00:00")],
-    "2025-09": [("2025-09-09 12:00:00", "2025-09-09 21:00:00")],
-}
+CLUSTER_NAME = "stack"
 
 
 @dataclass()
@@ -99,13 +87,13 @@ def get_runtime_for_instance(
     instance: model.Instance,
     start: datetime,
     end: datetime,
-    excluded_intervals: list[(str, str)],
+    excluded_intervals: list[tuple[datetime, datetime]],
 ):
     runtime = instance.get_runtime_during(start, end)
-    for interval in excluded_intervals:
+    for interval_start, interval_end in excluded_intervals:
         excluded_runtime = instance.get_runtime_during(
-            start_time=utils.parse_time_from_string(interval[0]),
-            end_time=utils.parse_time_from_string(interval[1]),
+            start_time=interval_start,
+            end_time=interval_end,
         )
         runtime = runtime - excluded_runtime
 
@@ -127,6 +115,12 @@ def collect_invoice_data_from_openstack(
     database, billing_start, billing_end, rates, invoice_month=None
 ):
     invoices = []
+
+    outages_data = outages.load_from_url()
+    excluded_intervals = outages_data.get_outages_during(
+        billing_start.isoformat(), billing_end.isoformat(), CLUSTER_NAME
+    )
+
     for project in database.projects:
         invoice = ProjectInvoice(
             project_name=project.uuid,
@@ -137,10 +131,6 @@ def collect_invoice_data_from_openstack(
             invoice_interval=f"{billing_start.date()} - {billing_end.date()}",
             rates=rates,
         )
-
-        excluded_intervals = []
-        if invoice_month:
-            excluded_intervals = OUTAGES_FOR_MONTH.get(invoice_month, [])
 
         for i in project.instances:  # type: model.Instance
             runtime = get_runtime_for_instance(
@@ -214,7 +204,7 @@ def write(invoices, output, invoice_month=None):
                             invoice.project_name,
                             invoice.project_id,
                             invoice.pi,
-                            "stack",  # Cluster Name
+                            CLUSTER_NAME,
                             "",  # Invoice Email
                             "",  # Invoice Address
                             invoice.institution,
