@@ -1,6 +1,6 @@
 import csv
 import logging
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_UP
 import math
@@ -43,7 +43,9 @@ class ProjectInvoice(object):
     project_id: str
     pi: str
     institution: str
-    invoice_interval: str
+
+    invoice_start: str
+    invoice_end: str
 
     instances: list[model.Instance]
 
@@ -128,7 +130,8 @@ def collect_invoice_data_from_openstack(
             pi="",
             institution="",
             instances=project.instances,
-            invoice_interval=f"{billing_start.date()} - {billing_end.date()}",
+            invoice_start=billing_start.replace(tzinfo=timezone.utc).isoformat(),
+            invoice_end=billing_end.replace(tzinfo=timezone.utc).isoformat(),
             rates=rates,
         )
 
@@ -154,6 +157,8 @@ def collect_invoice_data_from_openstack(
 
 
 def write(invoices, output, invoice_month=None):
+    generated_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+
     with open(output, "w", newline="") as f:
         csv_invoice_writer = csv.writer(
             f, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL
@@ -161,7 +166,9 @@ def write(invoices, output, invoice_month=None):
         # Write Headers
         csv_invoice_writer.writerow(
             [
-                "Invoice Month" if invoice_month else "Interval",
+                "Invoice Month",
+                "Report Start Time",
+                "Report End Time",
                 "Project - Allocation",
                 "Project - Allocation ID",
                 "Manager (PI)",
@@ -174,6 +181,7 @@ def write(invoices, output, invoice_month=None):
                 "SU Type",
                 "Rate",
                 "Cost",
+                "Generated At",
             ]
         )
 
@@ -196,11 +204,9 @@ def write(invoices, output, invoice_month=None):
                 if hours > 0:
                     csv_invoice_writer.writerow(
                         [
-                            (
-                                invoice_month
-                                if invoice_month
-                                else invoice.invoice_interval
-                            ),
+                            invoice_month,
+                            invoice.invoice_start,
+                            invoice.invoice_end,
                             invoice.project_name,
                             invoice.project_id,
                             invoice.pi,
@@ -213,6 +219,7 @@ def write(invoices, output, invoice_month=None):
                             su_name,
                             rate,  # Rate
                             cost,  # Cost
+                            generated_at,
                         ]
                     )
 
@@ -265,10 +272,22 @@ def generate_billing(
             s3.upload_file(output, Bucket=s3_bucket, Key=primary_location)
             logger.info(f"Uploaded to {primary_location}.")
 
-        timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-        secondary_location = (
+        # Upload daily copy
+        # End time is exclusive, subtract one second to find the inclusive end date
+        invoice_date = end - timedelta(seconds=1)
+        invoice_date = invoice_date.strftime("%Y-%m-%d")
+        daily_location = (
+            f"Invoices/{invoice_month}/"
+            f"Service Invoices/NERC OpenStack {invoice_date}.csv"
+        )
+        s3.upload_file(output, Bucket=s3_bucket, Key=daily_location)
+        logger.info(f"Uploaded to {daily_location}.")
+
+        # Upload archival copy
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        archive_location = (
             f"Invoices/{invoice_month}/"
             f"Archive/NERC OpenStack {invoice_month} {timestamp}.csv"
         )
-        s3.upload_file(output, Bucket=s3_bucket, Key=secondary_location)
-        logger.info(f"Uploaded to {secondary_location}.")
+        s3.upload_file(output, Bucket=s3_bucket, Key=archive_location)
+        logger.info(f"Uploaded to {archive_location}.")
