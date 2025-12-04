@@ -42,7 +42,8 @@ def test_billing_add_su_hours():
         project_id="foo",
         pi="foo",
         institution="foo",
-        invoice_interval="foo",
+        invoice_start="foo",
+        invoice_end="bar",
         instances=[],
         rates=None,
     )
