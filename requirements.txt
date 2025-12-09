@@ -1,4 +1,4 @@
-git+https://github.com/CCI-MOC/nerc-rates@5569bba#egg=nerc_rates
+nerc-rates>=1.0.1
 boto3 < 1.36
 dataclasses-json
 requests
