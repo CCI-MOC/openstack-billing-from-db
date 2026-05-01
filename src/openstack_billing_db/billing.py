@@ -94,8 +94,8 @@ def get_runtime_for_instance(
     runtime = instance.get_runtime_during(start, end)
     for interval_start, interval_end in excluded_intervals:
         excluded_runtime = instance.get_runtime_during(
-            start_time=interval_start,
-            end_time=interval_end,
+            start_time=interval_start.replace(tzinfo=None),
+            end_time=interval_end.replace(tzinfo=None),
         )
         runtime = runtime - excluded_runtime
 

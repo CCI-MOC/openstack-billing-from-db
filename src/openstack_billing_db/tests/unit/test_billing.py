@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pytest
 
 from openstack_billing_db import billing
@@ -34,6 +34,49 @@ def test_instance_simple_runtime():
     )
     assert r.total_seconds_running == (15 * DAY) - (DAY * 1) - (HOUR * 1)
     assert r.total_seconds_stopped == 0
+
+
+def test_instance_runtime_timezone_mismatch():
+    """Test that mismatched timezones between start/end and excluded_intervals raises an error."""
+    time = datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0)
+    events = [
+        InstanceEvent(time=time, name="create", message=""),
+        InstanceEvent(time=time + timedelta(days=15), name="delete", message=""),
+    ]
+    i = Instance(
+        uuid=uuid.uuid4().hex, name=uuid.uuid4().hex, flavor=FLAVORS[1], events=events
+    )
+
+    # Start and end are timezone-naive
+    start = datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0)
+    end = datetime(year=2000, month=2, day=1, hour=0, minute=0, second=0)
+
+    # excluded_intervals are timezone-aware
+    excluded_intervals = [
+        (
+            datetime(
+                year=2000,
+                month=1,
+                day=7,
+                hour=0,
+                minute=0,
+                second=0,
+                tzinfo=timezone.utc,
+            ),
+            datetime(
+                year=2000,
+                month=1,
+                day=8,
+                hour=0,
+                minute=0,
+                second=0,
+                tzinfo=timezone.utc,
+            ),
+        ),
+    ]
+
+    # Runs without error
+    billing.get_runtime_for_instance(i, start, end, excluded_intervals)
 
 
 def test_billing_add_su_hours():
